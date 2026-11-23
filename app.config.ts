@@ -5,13 +5,13 @@ const androidVersionCode = Math.floor(Date.now() / 1000) - 1577836800;
 
 export default {
   expo: {
-    name: "Papillon",
-    slug: "papillon",
+    name: "Papillon Prism",
+    slug: "papillon-prism",
     version: PackageJSON.version,
     orientation: "default",
     icon: "./assets/images/icon.png",
-    scheme: ["papillon", "izly", "skoapp-prod"],
-    platforms: ["ios", "android"],
+    scheme: ["papillonprism", "izly", "skoapp-prod"],
+    platforms: ["ios", "android", "web"],
     userInterfaceStyle: "automatic",
     ios: {
       appleTeamId: "7RXNP6V83P",
@@ -26,7 +26,7 @@ export default {
         AppGroupIdentifier: "group.xyz.getpapillon",
         CFBundleURLTypes: [
           {
-            CFBundleURLSchemes: ["papillon", "izly", "skoapp-prod"],
+            CFBundleURLSchemes: ["papillonprism", "izly", "skoapp-prod"],
           },
         ],
         CFBundleLocalizations: [
@@ -86,7 +86,7 @@ export default {
     },
     android: {
       versionCode: androidVersionCode,
-      package: "xyz.getpapillon.app",
+      package: "app.papillonprism.android",
       blockedPermissions: [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",

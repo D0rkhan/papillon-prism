@@ -18,6 +18,7 @@ import { usePeriodsData } from './hooks/usePeriodsData';
 import { useGradesData } from './hooks/useGradesData';
 import Typography from '@/ui/new/Typography';
 import Averages from './atoms/Averages';
+import EpflEntryCard from './atoms/EpflEntryCard';
 import GradesEmptyState from './atoms/GradesEmptyState';
 import GradesLoading from './atoms/GradesLoading';
 import List from '@/ui/new/List';
@@ -251,6 +252,10 @@ const GradesView = () => {
                   paddingVertical: 16,
                   gap: 12,
                 }}>
+                <SafeHorizontalView base={16}>
+                  <EpflEntryCard />
+                </SafeHorizontalView>
+
                 <SafeHorizontalView base={16}>
                   <Averages history={history} realAverage={isAverageServiceProvided ? averages.student?.value : undefined} color={theme.colors.primary} displayScale={displayScale} />
                 </SafeHorizontalView>

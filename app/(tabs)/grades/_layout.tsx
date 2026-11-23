@@ -39,6 +39,18 @@ export default function Layout() {
         }}
       />
       <Stack.Screen
+        name="objectif"
+        options={{
+          headerShown: true,
+          headerTitle: '',
+          headerTransparent: true,
+          headerLargeTitle: false,
+          presentation: 'card',
+          ...androidHeaderProps,
+          headerStyle: { backgroundColor: 'transparent' },
+        }}
+      />
+      <Stack.Screen
         name="subject/[id]"
         options={{
           headerShown: true,

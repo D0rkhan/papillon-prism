@@ -104,8 +104,9 @@ function mapSubjectGrades(grades: GradesOverview, accountId: string): Subject[] 
     const subjectId = average.subject.id;
 
     const subjectGrades = allMappedGrades.filter(g => g.subjectId === subjectId);
-    // Some schools hide subject averages: compute it from the grades instead.
-    const computedAverage = average.student ? -1 : getSubjectAverage(subjectGrades);
+    // Some schools hide subject averages ("Non noté", empty): compute it from the grades instead.
+    const official = mapGradeValueToScore(average.student);
+    const computedAverage = official.disabled ? getSubjectAverage(subjectGrades) : -1;
 
     subjects.push({
       id: subjectId,

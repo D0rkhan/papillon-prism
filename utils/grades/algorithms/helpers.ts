@@ -1,111 +1,53 @@
+import { medianOn20, subjectAverage } from "@/core/bac/normalize";
 import { Grade } from "@/services/shared/grade";
 
 export type ScoreProperty = "studentScore" | "averageScore" | "minScore" | "maxScore";
 
+/**
+ * Adapts app grades to the exact averaging rules of `core/bac/normalize`
+ * (every grade brought back to /20, optimal optional grades, bonus above 10 only).
+ * Bonus/optional rules only make sense for the student's own score: for class
+ * statistics (average, min, max) every grade counts as a regular one.
+ */
+export const toAverageable = (grades: readonly Grade[], property: ScoreProperty = "studentScore") =>
+  grades.map(grade => {
+    const score = grade[property];
+    const usable = !!score && !score.disabled && typeof score.value === "number" && Number.isFinite(score.value);
+    const own = property === "studentScore";
+    return {
+      value: usable ? (score as { value: number }).value : null,
+      outOf: grade.outOf?.value ?? 0,
+      coefficient: grade.coefficient ?? 1,
+      bonus: own ? grade.bonus : false,
+      optional: own ? grade.optional : false,
+    };
+  });
+
+/** Average /20 of one subject's grades, or −1 when nothing counts. */
 export const getSubjectAverageByProperty = (
-  subject: Grade[],
-  property: ScoreProperty = "studentScore",
-  loop: boolean = false
-): number => {
-  let calcGradesSum = 0;
-  let calcOutOfSum = 0;
+  grades: readonly Grade[],
+  property: ScoreProperty = "studentScore"
+): number => subjectAverage(toAverageable(grades, property)) ?? -1;
 
-  for (let i = 0; i < subject.length; i++) {
-    const grade = subject[i];
-    const targetScore = grade[property];
-
-    // Skip invalid grades
-    if (
-      !targetScore ||
-      targetScore.disabled ||
-      targetScore.value === null ||
-      targetScore.value < 0 ||
-      grade.coefficient === 0 ||
-      typeof targetScore.value !== "number" ||
-      !grade.outOf?.value
-    ) {
-      continue;
-    }
-
-    const coefficient = grade.coefficient || 1;
-    const outOfValue = grade.outOf.value;
-    const gradeValue = targetScore.value;
-
-    // Handle optional grades (only for student scores)
-    if (property === "studentScore" && grade.optional && !loop) {
-      const filteredSubject = subject.filter((_, idx) => idx !== i);
-      const avgWithout = getSubjectAverageByProperty(filteredSubject, property, true);
-      const avgWith = getSubjectAverageByProperty(subject, property, true);
-
-      // Only keep optional grade if it improves the average
-      if (avgWithout > avgWith) {
-        continue;
-      }
-    }
-
-    // Handle bonus grades (only for student scores)
-    if (property === "studentScore" && grade.bonus) {
-      const averageMoy = outOfValue / 2;
-      const newGradeValue = gradeValue - averageMoy;
-
-      if (newGradeValue >= 0) {
-        calcGradesSum += newGradeValue;
-        calcOutOfSum += 1;
-      }
-      continue;
-    }
-
-    // Normalize grades to /20 scale
-    if (gradeValue > 20 || (coefficient < 1 && outOfValue - 20 >= -5) || outOfValue > 20) {
-      const gradeOn20 = (gradeValue / outOfValue) * 20;
-      calcGradesSum += gradeOn20 * coefficient;
-      calcOutOfSum += 20 * coefficient;
-    } else {
-      calcGradesSum += gradeValue * coefficient;
-      calcOutOfSum += outOfValue * coefficient;
-    }
-  }
-
-  if (calcOutOfSum > 0) {
-    const result = Math.min((calcGradesSum / calcOutOfSum) * 20, 20);
-    return isNaN(result) ? -1 : result;
-  }
-
-  return -1;
-};
-
+/** Mean of every subject's average (subjects weighted equally), or −1. */
 export const PapillonSubjectAvgByProperty = (
-  grades: Grade[],
+  grades: readonly Grade[],
   property: ScoreProperty = "studentScore"
 ): number => {
-  if (!grades?.length) {
-    return 0;
+  if (!grades?.length) { return -1; }
+  const bySubject = new Map<string, Grade[]>();
+  for (const grade of grades) {
+    const list = bySubject.get(grade.subjectId) ?? [];
+    list.push(grade);
+    bySubject.set(grade.subjectId, list);
   }
-
-  const groupedBySubject: Record<string, Grade[]> = {};
-  let countedSubjects = 0;
-  let totalAverage = 0;
-
-  // Group grades by subject
-  for (let i = 0; i < grades.length; i++) {
-    const grade = grades[i];
-    const key = grade.subjectId;
-    if (!groupedBySubject[key]) {
-      groupedBySubject[key] = [];
-    }
-    groupedBySubject[key].push(grade);
+  let total = 0;
+  let counted = 0;
+  for (const list of bySubject.values()) {
+    const avg = getSubjectAverageByProperty(list, property);
+    if (avg >= 0) { total += avg; counted++; }
   }
-
-  const subjects = Object.values(groupedBySubject);
-
-  // Calculate average for each subject
-  for (let i = 0; i < subjects.length; i++) {
-    const nAvg = getSubjectAverageByProperty(subjects[i], property);
-    if (nAvg !== -1) {
-      countedSubjects++;
-      totalAverage += nAvg;
-    }
-  }
-
-  return countedSubjects > 0 ? totalAverage / countedSubjects : 0;
+  return counted > 0 ? total / counted : -1;
 };
+
+export const getMedianOn20 = (grades: readonly Grade[]): number => medianOn20(toAverageable(grades)) ?? -1;
