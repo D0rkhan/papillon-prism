@@ -9,6 +9,7 @@ import { useManagerSubscription } from "@/hooks/useManagerSubscription";
 import type { AccountManager } from "@/services/shared";
 import { getManager } from "@/services/shared";
 import { useBacStore } from "@/stores/bac";
+import { demoPeriods } from "@/utils/bac/demo";
 import { ConvertedPeriod, convertPeriod, fromSnapshot, schoolYearKey, toSnapshot } from "@/utils/bac/fromPapillon";
 import { warn } from "@/utils/logger/logger";
 
@@ -31,7 +32,8 @@ const nextFrame = () => new Promise<void>(resolve => setTimeout(resolve, 16));
  * bac / EPFL engine and the decision tools. Heavy work is split in steps with a frame
  * in between, so the screen stays responsive on a phone.
  */
-export function useBacAnalysis() {
+export function useBacAnalysis(options: { demo?: boolean } = {}) {
+  const demo = options.demo ?? false;
   const profile = useBacStore(s => s.profile);
   const examResults = useBacStore(s => s.examResults);
   const competitive = useBacStore(s => s.competitive);
@@ -77,14 +79,22 @@ export function useBacAnalysis() {
   }, [profile.currentYear, kindOverrides, saveSnapshot]);
 
   useManagerSubscription(
-    useCallback((m: AccountManager) => { fetchAll(m); }, [fetchAll]),
-    useCallback(() => { setLoading(false); setError(new Error("Compte indisponible")); }, [])
+    useCallback((m: AccountManager) => { if (!demo) { fetchAll(m); } }, [fetchAll, demo]),
+    useCallback(() => { if (!demo) { setLoading(false); setError(new Error("Compte indisponible")); } }, [demo])
   );
 
+  // Demo: a synthetic Première student, no account needed.
+  useEffect(() => {
+    if (!demo) { return; }
+    setCurrent(demoPeriods());
+    setLoading(false);
+  }, [demo]);
+
   const refresh = useCallback(async () => {
+    if (demo) { setCurrent(demoPeriods()); return; }
     const m = getManager();
     if (m) { await fetchAll(m); }
-  }, [fetchAll]);
+  }, [fetchAll, demo]);
 
   // Assemble the engine input: archived years (other than the current one) + live data.
   useEffect(() => {
@@ -99,7 +109,7 @@ export function useBacAnalysis() {
     const periods: BacPeriod[] = [];
     const grades: BacGrade[] = [];
     const official: OfficialAverage[] = [];
-    for (const snap of Object.values(archive)) {
+    for (const snap of demo ? [] : Object.values(archive)) {
       if (snap.key === currentKey) { continue; }
       const s = fromSnapshot(snap);
       periods.push(...s.periods);
@@ -147,9 +157,10 @@ export function useBacAnalysis() {
         if (id === runId.current) { setComputing(false); }
       }
     })();
-  }, [current, archive, profile, examResults, competitive]);
+  }, [current, archive, profile, examResults, competitive, demo]);
 
-  const targetProbability = useBacStore(s => s.targetProbability);
+  const targetDelta = useBacStore(s => s.targetDelta);
+  const currentAdmissible = analysis?.result.probabilities.admissible ?? 0;
 
   /** On demand: minimum grade on the next assessment of a subject. */
   const computeTarget = useCallback(async (subject: CanonicalSubject) => {
@@ -157,9 +168,10 @@ export function useBacAnalysis() {
     if (!input) { return; }
     setTargets(t => ({ ...t, [subject]: "computing" }));
     await nextFrame();
-    const target = requiredNextGrade(input, subject, targetProbability, "competitive", 2500);
+    const goal = Math.min(0.995, Math.max(0.005, currentAdmissible + targetDelta));
+    const target = requiredNextGrade(input, subject, goal, "admissible", 4000);
     setTargets(t => ({ ...t, [subject]: target }));
-  }, [targetProbability]);
+  }, [targetDelta, currentAdmissible]);
 
   return { analysis, loading, computing, error, refresh, targets, computeTarget };
 }

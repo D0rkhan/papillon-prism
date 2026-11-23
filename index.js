@@ -42,4 +42,13 @@ console.info = (...args) => {
   originalInfo(...args);
 };
 
-import "expo-router/entry";
+// Web / Linux desktop: Skia draws through CanvasKit (WebAssembly), which must be loaded
+// before any screen renders. Native platforms start right away.
+if (typeof document !== "undefined") {
+  require("@shopify/react-native-skia/lib/module/web")
+    .LoadSkiaWeb({ locateFile: () => "/canvaskit.wasm" })
+    .catch((e) => console.error("[skia] CanvasKit failed to load", e))
+    .finally(() => require("expo-router/entry"));
+} else {
+  require("expo-router/entry");
+}

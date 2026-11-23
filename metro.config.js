@@ -25,4 +25,23 @@ config.resolver.extraNodeModules = {
   "react-native-svg": path.resolve(rootNodeModules, "react-native-svg"),
 };
 
+// Web/desktop: some packages declare entry points that do not exist in their published
+// files (esup-multi.js points "module" at a missing index.mjs). Pin them to what ships.
+const PINNED = {
+  "esup-multi.js": path.resolve(rootNodeModules, "esup-multi.js/dist/index.js"),
+  // Native-only modules replaced by web implementations.
+  "react-native-linear-gradient": path.resolve(__dirname, "stubs/web/react-native-linear-gradient.tsx"),
+  "react-native-dynamic-theme": path.resolve(__dirname, "stubs/web/react-native-dynamic-theme.js"),
+  "@expo/ui/swift-ui": path.resolve(__dirname, "stubs/web/native-ui.js"),
+  "@expo/ui/swift-ui/modifiers": path.resolve(__dirname, "stubs/web/native-ui.js"),
+  "@expo/ui/jetpack-compose": path.resolve(__dirname, "stubs/web/native-ui.js"),
+};
+const upstreamResolve = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === "web" && PINNED[moduleName]) {
+    return { type: "sourceFile", filePath: PINNED[moduleName] };
+  }
+  return (upstreamResolve ?? context.resolveRequest)(context, moduleName, platform);
+};
+
 module.exports = config;

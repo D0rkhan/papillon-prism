@@ -11,14 +11,16 @@ import { isInternetReachable } from "./network";
 import { satisfiesAll } from "./semver";
 import { CurrentPtr } from "./types";
 
-const MODELS_ROOT = new Directory(Paths.document, "papillon-models");
+// Lazy: touching Paths at import time crashes platforms without a file system (web).
+let modelsRoot: Directory | null = null;
+const getModelsRoot = (): Directory => (modelsRoot ??= new Directory(Paths.document, "papillon-models"));
 
 export async function getCurrentPtr(): Promise<CurrentPtr | null> {
-  const currentPtrFile = new File(MODELS_ROOT, "current.json");
+  const currentPtrFile = new File(getModelsRoot(), "current.json");
   debug(`[MODELUPDATER] Lecture du pointeur actuel: ${currentPtrFile.uri}`);
   
   // Vérifier si le répertoire parent existe
-  if (!MODELS_ROOT.exists) {
+  if (!getModelsRoot().exists) {
     debug("[PTR] Répertoire papillon-models n'existe pas");
     return null;
   }
@@ -40,8 +42,8 @@ export async function getCurrentPtr(): Promise<CurrentPtr | null> {
 
 export async function setCurrentPtr(ptr: CurrentPtr) {
   debug(`[PTR] Mise à jour du pointeur -> ${ptr.name} v${ptr.version}`);
-  await ensureDir(MODELS_ROOT.uri);
-  const currentPtrFile = new File(MODELS_ROOT, "current.json");
+  await ensureDir(getModelsRoot().uri);
+  const currentPtrFile = new File(getModelsRoot(), "current.json");
   await writeJSON(currentPtrFile.uri, ptr);
 }
 
@@ -65,7 +67,7 @@ export async function checkAndUpdateModel(
   appVersion: string,
   manifestUrl?: string
 ) {
-  return withLock(new File(MODELS_ROOT, ".update.lock").uri, async () => {
+  return withLock(new File(getModelsRoot(), ".update.lock").uri, async () => {
     debug("[MODELUPDATER] Démarrage de l'updater");
 
     if (!(await isInternetReachable())) {
@@ -111,11 +113,11 @@ export async function checkAndUpdateModel(
     }
     debug("[MODELUPDATER] Nouvelle version détectée");
 
-    const magicFile = new File(MODELS_ROOT, `tmp_${Date.now()}.magic`);
+    const magicFile = new File(getModelsRoot(), `tmp_${Date.now()}.magic`);
     debug(
       `[MODELUPDATER] Téléchargement du nouveau modèle: ${latest.download_url}`
     );
-    const downloadedFile = await File.downloadFileAsync(latest.download_url, MODELS_ROOT);
+    const downloadedFile = await File.downloadFileAsync(latest.download_url, getModelsRoot());
     await downloadedFile.move(magicFile);
     debug(`[MODELUPDATER] Téléchargement terminé -> ${magicFile.uri}`);
 
@@ -132,7 +134,7 @@ export async function checkAndUpdateModel(
       debug("[MODELUPDATER] Intégrité OK");
     }
 
-    const staging = new Directory(MODELS_ROOT, `_staging_${latest.name}_${latest.version}`);
+    const staging = new Directory(getModelsRoot(), `_staging_${latest.name}_${latest.version}`);
     await extractMagicToStaging(magicFile.uri, staging.uri);
     debug("[MODELUPDATER] Extraction terminée");
 
@@ -148,7 +150,7 @@ export async function checkAndUpdateModel(
     debug("[MODELUPDATER] Lancement du test");
     await smokeTestModel(staging.uri);
 
-    const modelDir = new Directory(MODELS_ROOT, latest.name);
+    const modelDir = new Directory(getModelsRoot(), latest.name);
     const finalDir = new Directory(modelDir, latest.version);
     debug(`[MODELUPDATER] Promotion vers dossier final: ${finalDir.uri}`);
     await ensureDir(modelDir.uri);

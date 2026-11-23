@@ -88,14 +88,14 @@ function TargetRow({ subject, target, onCompute }: { subject: CanonicalSubject; 
   );
 }
 
-export default function ObjectifScreen() {
+export function ObjectifView({ demo = false }: { demo?: boolean }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const g = useGlass();
-  const { analysis, loading, computing, error, refresh, targets, computeTarget } = useBacAnalysis();
+  const { analysis, loading, computing, error, refresh, targets, computeTarget } = useBacAnalysis({ demo });
   const profile = useBacStore(s => s.profile);
-  const targetProbability = useBacStore(s => s.targetProbability);
-  const setTargetProbability = useBacStore(s => s.setTargetProbability);
+  const targetDelta = useBacStore(s => s.targetDelta);
+  const setTargetDelta = useBacStore(s => s.setTargetDelta);
   const [showAll, setShowAll] = useState(false);
 
   const contentWidth = Math.min(width, 760) - space.lg * 2;
@@ -111,7 +111,9 @@ export default function ObjectifScreen() {
   }, [analysis]);
 
   const targetSubjects: CanonicalSubject[] = useMemo(() => {
-    const top = (analysis?.leverage ?? []).map(l => l.subject);
+    // Only subjects he is actually graded in (no philosophy in Première, for instance).
+    const graded = new Set((analysis?.result.subjects ?? []).filter(x => x.grades > 0).map(x => x.subject));
+    const top = (analysis?.leverage ?? []).map(l => l.subject).filter(x => graded.has(x));
     return Array.from(new Set<CanonicalSubject>(["maths", "physique_chimie", ...top])).slice(0, 5);
   }, [analysis]);
 
@@ -125,7 +127,7 @@ export default function ObjectifScreen() {
         contentContainerStyle={{ paddingTop: insets.top + space.xxl, paddingBottom: insets.bottom + 120, paddingHorizontal: space.lg, alignSelf: "center", width: Math.min(width, 760) }}
         refreshControl={<RefreshControl refreshing={loading && !!analysis} onRefresh={refresh} tintColor={aurora.cyan} />}
       >
-        <GText variant="overline" tone="secondary">Bac {profile.session} · Objectif</GText>
+        <GText variant="overline" tone="secondary">Bac {profile.session} · Objectif{demo ? " · démo" : ""}</GText>
         <GText variant="title1" style={{ marginBottom: space.xl }}>EPFL Lausanne</GText>
 
         {!analysis && (
@@ -177,8 +179,8 @@ export default function ObjectifScreen() {
 
             <Section title="Conditions d'admission" subtitle="Les trois doivent être remplies (anneau extérieur). L'anneau rose ajoute le seuil sélectif estimé.">
               {[
-                { label: "Moyenne générale ≥ 16", p: p.overallAtLeastMin },
-                ...p.subjectMinimums.map(sm => ({ label: `${sm.label} ≥ ${sm.min}`, p: sm.probability })),
+                { label: "Moyenne générale de 16 ou plus", p: p.overallAtLeastMin },
+                ...p.subjectMinimums.map(sm => ({ label: `${sm.label} : ${sm.min} ou plus`, p: sm.probability })),
               ].map(item => (
                 <View key={item.label} style={{ marginBottom: space.md }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
@@ -227,14 +229,19 @@ export default function ObjectifScreen() {
               </Section>
             )}
 
-            <Section title="Note à viser au prochain devoir" subtitle={`Minimum pour garder ${pct(targetProbability)} de chances de sélection`}>
+            <Section
+              title="Note à viser au prochain devoir"
+              subtitle={targetDelta === 0
+                ? `Minimum pour ne pas faire baisser ses chances d'admissibilité (${pct(p.admissible)})`
+                : `Minimum pour faire monter ses chances d'admissibilité de ${Math.round(targetDelta * 100)} points`}
+            >
               <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.md }}>
-                {[0.25, 0.5, 0.75].map(v => (
-                  <Chip key={v} label={pct(v)} color={v === targetProbability ? aurora.cyan : g.textTertiary} onPress={() => setTargetProbability(v)} />
+                {[[0, "Maintenir"], [0.02, "+2 pts"], [0.05, "+5 pts"]].map(([v, label]) => (
+                  <Chip key={String(v)} label={String(label)} color={v === targetDelta ? aurora.cyan : g.textTertiary} onPress={() => setTargetDelta(Number(v))} />
                 ))}
               </View>
               {targetSubjects.map(s => (
-                <TargetRow key={`${s}-${targetProbability}`} subject={s} target={targets[s]} onCompute={() => computeTarget(s)} />
+                <TargetRow key={`${s}-${targetDelta}-${p.admissible}`} subject={s} target={targets[s]} onCompute={() => computeTarget(s)} />
               ))}
             </Section>
 
@@ -280,3 +287,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });
+
+export default function ObjectifScreen() {
+  return <ObjectifView />;
+}

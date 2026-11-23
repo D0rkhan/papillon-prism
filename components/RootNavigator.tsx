@@ -20,6 +20,7 @@ import MainTabErrorBoundary from '@/ui/components/MainTabErrorBoundary';
 
 const DEVMODE_SUBSCREENS = [
   { name: "(dev)/logs", title: "Journaux" },
+  { name: "(dev)/objectif-demo", title: "Objectif EPFL (démo)" },
   { name: "(dev)/network", title: "Requêtes réseau" },
   { name: "(dev)/papillonkit", title: "PapillonKit" },
   { name: "(dev)/papillonkit-tests", title: "Tests PapillonKit" },

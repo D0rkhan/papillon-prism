@@ -73,13 +73,14 @@ const WelcomeModal: React.FC = () => {
     );
   };
 
-  const hasAPhotoBeenAdded = profilePictureUrl !== null;
   const [isAddingPhoto, setIsAddingPhoto] = useState<boolean>(false);
 
   const profilePictureUrl = useMemo(() => {
     if (!account) return null;
     return account.customisation?.profilePicture ? `data:image/png;base64,${account.customisation.profilePicture}` : null;
   }, [account]);
+  // Must come after the memo: reading it before its declaration throws (temporal dead zone).
+  const hasAPhotoBeenAdded = profilePictureUrl !== null;
 
   const updateProfilePictureFromLibrary = async () => {
     setIsAddingPhoto(true);

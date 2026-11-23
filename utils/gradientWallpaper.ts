@@ -1,5 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system";
-import { Dimensions } from "react-native";
+import { Dimensions, Platform } from "react-native";
 
 import { useAccountStore } from "@/stores/account";
 import { useSettingsStore } from "@/stores/settings";
@@ -58,6 +58,8 @@ export const randomGradient = (): Gradient => ({
 
 /** Renders the gradient to a PNG in the wallpapers folder and sets it as the wallpaper. */
 export function applyGradientWallpaper(gradient: Gradient) {
+  // Web / desktop has no app file system to save the PNG into: keep the default backdrop.
+  if (Platform.OS === "web") return;
   const image = generateMeshGradient(gradient.colors, gradient.seed, GRADIENT_WIDTH, GRADIENT_HEIGHT);
   if (!image) return;
 

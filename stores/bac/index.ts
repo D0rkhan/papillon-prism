@@ -17,15 +17,15 @@ export interface BacState {
   kindOverrides: Record<string, EvalKind>;
   /** One snapshot per school year ("2026-2027"), so Première still counts in Terminale. */
   archive: Record<string, YearSnapshot>;
-  /** Probability the next-grade targets aim for. */
-  targetProbability: number;
+  /** Next-grade targets aim at the current P(admissible) + this delta (0 = hold the line). */
+  targetDelta: number;
 
   setProfile: (profile: BacProfile) => void;
   setExamResult: (componentId: string, value: number | null) => void;
   setCompetitive: (value: { mean: number; sd: number }) => void;
   setKindOverride: (gradeId: string, kind: EvalKind | null) => void;
   saveSnapshot: (snapshot: YearSnapshot) => void;
-  setTargetProbability: (p: number) => void;
+  setTargetDelta: (delta: number) => void;
 }
 
 export const useBacStore = create<BacState>()(
@@ -36,7 +36,7 @@ export const useBacStore = create<BacState>()(
       competitive: { mean: 16.5, sd: 0.5 },
       kindOverrides: {},
       archive: {},
-      targetProbability: 0.5,
+      targetDelta: 0,
 
       setProfile: profile => set({ profile }),
       setExamResult: (componentId, value) =>
@@ -59,12 +59,14 @@ export const useBacStore = create<BacState>()(
           if (previous && previous.grades.length > snapshot.grades.length) { return state; }
           return { archive: { ...state.archive, [snapshot.key]: snapshot } };
         }),
-      setTargetProbability: targetProbability => set({ targetProbability }),
+      setTargetDelta: targetDelta => set({ targetDelta }),
     }),
     {
       name: "bac-storage",
       storage: createMMKVStorage<BacState>("bac-storage"),
-      version: 1,
+      version: 2,
+      // v1 → v2: absolute target probability replaced by a delta. Keeps the archive.
+      migrate: persisted => ({ ...(persisted as object), targetDelta: 0 }) as BacState,
     }
   )
 );
