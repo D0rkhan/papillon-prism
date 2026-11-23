@@ -23,6 +23,6 @@ StartupWMClass=Papillon Prism
 DESKTOP
 update-desktop-database "${HOME}/.local/share/applications" 2>/dev/null || true
 echo "Papillon Prism installé. Lance-le depuis le menu ou avec : ~/.local/bin/papillon-prism.AppImage"
-if ! ldconfig -p 2>/dev/null | grep -q libfuse.so.2; then
+if ! compgen -G "/usr/lib/libfuse.so.2*" >/dev/null && ! compgen -G "/usr/lib64/libfuse.so.2*" >/dev/null && ! ldconfig -p 2>/dev/null | grep -q "libfuse.so.2"; then
   echo "Note : les AppImage ont besoin de FUSE 2 → sudo pacman -S fuse2"
 fi
