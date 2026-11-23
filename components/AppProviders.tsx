@@ -38,7 +38,7 @@ export function AppProviders({ children }: AppProvidersProps) {
 
   // Memoize background color to prevent string recreation
   const backgroundColor = useMemo(() => {
-    return colorScheme === 'dark' ? '#000000' : '#F5F5F5';
+    return colorScheme === 'dark' ? '#07070C' : '#F3F4FB';
   }, [colorScheme]);
 
   // Combined effect for system UI updates to reduce effect overhead

@@ -29,8 +29,8 @@ export const AppColors = [
     colorEnum: Colors.GREEN,
   },
   {
-    mainColor: "#C400DD",
-    backgroundColor: "#F6D9FA",
+    mainColor: "#A855F7",
+    backgroundColor: "#F1E6FE",
     nameKey: "Violet",
     colorEnum: Colors.PURPLE,
   },

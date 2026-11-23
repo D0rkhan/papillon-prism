@@ -1,20 +1,16 @@
-import { Papicons } from "@getpapillon/papicons";
 import { useHeaderHeight, useRoute, useTheme } from "expo-router/react-navigation";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Image, ScrollView, View } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
+
+import { aurora, Aurora, GlassButton, GlassChoice, GlassSurface, GText, space, useGlass } from "@/ui/glass";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Dynamic } from "@/ui/components/Dynamic";
-import Icon from "@/ui/components/Icon";
 import Stack from "@/ui/components/Stack";
-import Button from "@/ui/new/Button";
 import Divider from "@/ui/new/Divider";
-import List from "@/ui/new/List";
 import Typography from "@/ui/new/Typography";
-import { PapillonZoomIn, PapillonZoomOut } from "@/ui/utils/Transition";
-import adjust from "@/utils/adjustColor";
 import SafeHorizontalView from "@/ui/components/SafeHorizontalView";
 
 import { GetSupportedServices } from './utils/constants';
@@ -30,7 +26,8 @@ export default function ServiceSelection() {
   const { params } = useRoute();
   const { type } = params;
 
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const g = useGlass();
 
   const services = GetSupportedServices((path: { pathname: string, options?: UnknownInputParams }) => {
     router.push({
@@ -89,14 +86,7 @@ export default function ServiceSelection() {
             <Typography variant="h3" align="center">{t("ONBOARDING_UNSUPPORTED_TITLE")}</Typography>
             <Typography align="center" variant="body1" color="textSecondary">{t("ONBOARDING_UNSUPPORTED_DESCRIPTION")}</Typography>
             <Divider height={16} ghost />
-            <Button
-              label={t("Global_Back")}
-              variant="secondary"
-              onPress={() => {
-                router.back();
-              }}
-              fullWidth
-            />
+            <GlassButton label={t("Global_Back")} variant="glass" onPress={() => router.back()} />
           </Stack>
         </SafeHorizontalView>
       </ScrollView>
@@ -104,93 +94,46 @@ export default function ServiceSelection() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.overground }}>
-      <List
-        ListHeaderComponent={() => (
-          <SafeHorizontalView base={16}>
-            <Stack padding={[4, 0]} style={{ maxWidth: 500 }}>
-              <Typography variant="h2">{titleString}</Typography>
-              <Typography variant="action" color="textSecondary">
-                {t("ONBOARDING_SERVICE_SELECTION_DESCRIPTION")}
-              </Typography>
-              <Divider height={18} ghost />
-            </Stack>
-          </SafeHorizontalView>
-        )}
-        safeHorizontalPadding={16}
+    <View style={{ flex: 1, backgroundColor: g.background }}>
+      <Aurora />
+      <ScrollView
         contentContainerStyle={{
-          paddingBottom: 16,
-          flexGrow: 1,
-          gap: 10,
-          paddingTop: headerHeight + 20,
-          width: "100%",
-          maxWidth: 500,
-          marginHorizontal: "auto",
-        }}
-        style={{ flex: 1 }}
-      >
-        {filteredServices.map(app => (
-          <List.Item
-            key={app.name}
-            onPress={() => setSelectedService(app.name)}
-            style={{
-              backgroundColor:
-                selectedService === app.name
-                  ? adjust(colors.tint, theme.dark ? -0.8 : 0.9)
-                  : colors.item,
-              minHeight: 62,
-            }}
-          >
-            <List.Leading>
-              <Dynamic animated>
-                <Image
-                  source={app.image}
-                  style={{ width: 32, height: 32, borderRadius: 10 }}
-                />
-              </Dynamic>
-            </List.Leading>
-            <Dynamic animated>
-              <Typography variant="action">{app.title}</Typography>
-            </Dynamic>
-
-            <List.Trailing>
-              {selectedService === app.name && (
-                <Dynamic
-                  animated
-                  entering={PapillonZoomIn}
-                  exiting={PapillonZoomOut}
-                >
-                  <Icon fill={colors.primary}>
-                    <Papicons name="check" />
-                  </Icon>
-                </Dynamic>
-              )}
-            </List.Trailing>
-          </List.Item>
-        ))}
-      </List>
-
-      <SafeHorizontalView
-        base={20}
-        style={{
-          paddingTop: 20,
-          paddingBottom: insets.bottom + 20,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          backgroundColor: colors.background,
-          alignItems: "center",
+          paddingTop: headerHeight + space.xl,
+          paddingBottom: space.xl,
+          paddingHorizontal: space.xl,
         }}
       >
-        <Button
-          label={t("ONBOARDING_CONTINUE")}
-          onPress={() => {
-            loginToService(selectedService);
-          }}
-          disabled={!selectedService || !hasServiceRoute}
-          maxWidth={500}
-          fullWidth
-        />
-      </SafeHorizontalView>
+        <View style={{ width: "100%", maxWidth: 560, alignSelf: "center", gap: space.md }}>
+          <Reanimated.View entering={FadeInDown.duration(420)} style={{ marginBottom: space.md }}>
+            <GText variant="overline" color={aurora.cyan}>Étape 2 sur 2</GText>
+            <GText variant="title1">{titleString}</GText>
+            <GText variant="body" tone="secondary">{t("ONBOARDING_SERVICE_SELECTION_DESCRIPTION")}</GText>
+          </Reanimated.View>
+
+          {filteredServices.map((app, i) => (
+            <Reanimated.View key={app.name} entering={FadeInDown.duration(420).delay(60 + i * 45)}>
+              <GlassChoice
+                label={app.title}
+                selected={selectedService === app.name}
+                onPress={() => setSelectedService(app.name)}
+                leading={<Image source={app.image} style={{ width: 40, height: 40, borderRadius: 12 }} />}
+              />
+            </Reanimated.View>
+          ))}
+        </View>
+      </ScrollView>
+
+      <GlassSurface radius={0} style={{ borderLeftWidth: 0, borderRightWidth: 0, borderBottomWidth: 0 }}>
+        <View style={{ paddingTop: space.lg, paddingBottom: insets.bottom + space.lg, paddingHorizontal: space.xl }}>
+          <View style={{ width: "100%", maxWidth: 560, alignSelf: "center" }}>
+            <GlassButton
+              label={t("ONBOARDING_CONTINUE")}
+              onPress={() => { if (selectedService) { loginToService(selectedService); } }}
+              disabled={!selectedService || !hasServiceRoute}
+            />
+          </View>
+        </View>
+      </GlassSurface>
     </View>
   );
 }

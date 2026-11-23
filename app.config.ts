@@ -121,7 +121,7 @@ export default {
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#29947A",
+          backgroundColor: "#07070C",
           image: "./assets/images/logotype.png",
           imageWidth: 240,
         },

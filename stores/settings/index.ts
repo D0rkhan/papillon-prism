@@ -13,7 +13,7 @@ export const DEFAULT_MATERIAL_YOU_ENABLED =
 
 const defaultPersonalization: Personalization = {
   fontFamily: "sn-pro",
-  colorSelected: Colors.GREEN,
+  colorSelected: Colors.PURPLE,
   theme: "auto",
   useMaterialYou: DEFAULT_MATERIAL_YOU_ENABLED,
   iOSBottomAccessoryEnabled: true,

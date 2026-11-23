@@ -1,22 +1,18 @@
-import { useHeaderHeight, useTheme } from "expo-router/react-navigation";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import { useNavigation } from "expo-router";
 import React, { useState } from "react";
-import { FlatList, StatusBar, View } from "react-native";
+import { ScrollView, StatusBar, View } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Stack from "@/ui/components/Stack";
-import Button from "@/ui/new/Button";
-import Divider from "@/ui/new/Divider";
-import Typography from "@/ui/new/Typography";
-import SafeHorizontalView from "@/ui/components/SafeHorizontalView";
+import { aurora, Aurora, GlassButton, GlassChoice, GlassSurface, GText, space, useGlass } from "@/ui/glass";
 
 import HighSchoolIllustration from "./components/ageSelection/illustrations/highSchool";
 import MiddleSchoolIllustration from "./components/ageSelection/illustrations/middleSchool";
 import ParentsIllustration from "./components/ageSelection/illustrations/parents";
 import SupSchoolIllustration from "./components/ageSelection/illustrations/supSchool";
 import TeacherIllustration from "./components/ageSelection/illustrations/teacher";
-import OnboardingSelector from "./components/OnboardingSelector";
 
 const LEVELS = [
   {
@@ -61,88 +57,77 @@ const LEVELS = [
 
 export default function AgeSelection() {
   const headerHeight = useHeaderHeight();
-  const theme = useTheme();
-  const { colors } = theme;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const g = useGlass();
 
-  const [selectedLevel, setSelectedLevel] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
 
   return (
-    <View style={{ flex: 1 }}>
-      <StatusBar
-        barStyle={theme.dark ? "light-content" : "dark-content"}
-        translucent
-      />
+    <View style={{ flex: 1, backgroundColor: g.background }}>
+      <StatusBar barStyle={g.dark ? "light-content" : "dark-content"} translucent />
+      <Aurora />
 
-      <FlatList
-        ListHeaderComponent={() => (
-          <SafeHorizontalView base={20}>
-            <Stack
-              style={{
-                alignSelf: "center",
-                width: "100%",
-                maxWidth: 500,
-              }}
-            >
-              <Typography variant="h2">{t("ONBOARDING_AGE_TITLE")}</Typography>
-              <Typography variant="action" color="textSecondary">
-                {t("ONBOARDING_AGE_DESCRIPTION")}
-              </Typography>
-              <Divider height={6} ghost />
-            </Stack>
-          </SafeHorizontalView>
-        )}
-        data={LEVELS.map(level =>
-          "labelKey" in level ? { ...level, label: t(level.labelKey) } : level
-        )}
-        renderItem={({ item }) => (
-          <SafeHorizontalView base={20}>
-            <OnboardingSelector
-              item={item}
-              selected={selectedLevel}
-              setSelected={setSelectedLevel}
-            />
-          </SafeHorizontalView>
-        )}
+      <ScrollView
         contentContainerStyle={{
-          flexGrow: 1,
-          gap: 10,
-          paddingTop: headerHeight + 20,
-          paddingBottom: 20,
-          width: "100%",
-          maxWidth: 500,
-          marginHorizontal: 'auto'
-        }}
-        initialNumToRender={2}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        style={{ flex: 1 }}
-      />
-
-      <SafeHorizontalView
-        base={20}
-        style={{
-          paddingTop: 20,
-          paddingBottom: insets.bottom + 20,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          alignItems: 'center'
+          paddingTop: headerHeight + space.xl,
+          paddingBottom: space.xl,
+          paddingHorizontal: space.xl,
         }}
       >
-        <Button
-          label={t("ONBOARDING_CONTINUE")}
-          onPress={() => {
-            navigation.navigate("serviceSelection", {
-              type: LEVELS.find(level => level.key === selectedLevel)?.type,
-            });
-          }}
-          disabled={!selectedLevel}
-          fullWidth
-          maxWidth={500}
-        />
-      </SafeHorizontalView>
+        <View style={{ width: "100%", maxWidth: 560, alignSelf: "center", gap: space.md }}>
+          <Reanimated.View entering={FadeInDown.duration(420)} style={{ marginBottom: space.md }}>
+            <GText variant="overline" color={aurora.cyan}>Étape 1 sur 2</GText>
+            <GText variant="title1">{t("ONBOARDING_AGE_TITLE")}</GText>
+            <GText variant="body" tone="secondary">{t("ONBOARDING_AGE_DESCRIPTION")}</GText>
+          </Reanimated.View>
+
+          {LEVELS.map((level, i) => {
+            if (!("key" in level) || !level.key) {
+              return <View key={`sep-${i}`} style={{ height: 1, backgroundColor: g.separator, marginVertical: space.md }} />;
+            }
+            const Illustration = level.icon as React.ComponentType<{ color: string; dark: string; width?: number; height?: number }>;
+            const accent = level.color as string;
+            return (
+              <Reanimated.View key={level.key} entering={FadeInDown.duration(420).delay(60 + i * 50)}>
+                <GlassChoice
+                  label={t(level.labelKey as string)}
+                  selected={selectedLevel === level.key}
+                  accent={accent}
+                  onPress={() => setSelectedLevel(selectedLevel === level.key ? null : (level.key as string))}
+                  trailing={selected => (
+                    <View style={{ width: 70, height: 46, overflow: "hidden", marginBottom: -12 }} pointerEvents="none">
+                      <Illustration
+                        width={70}
+                        height={47}
+                        color={selected ? accent : "transparent"}
+                        dark={selected ? accent : g.textTertiary}
+                      />
+                    </View>
+                  )}
+                />
+              </Reanimated.View>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      <GlassSurface radius={0} style={{ borderLeftWidth: 0, borderRightWidth: 0, borderBottomWidth: 0 }}>
+        <View style={{ paddingTop: space.lg, paddingBottom: insets.bottom + space.lg, paddingHorizontal: space.xl }}>
+          <View style={{ width: "100%", maxWidth: 560, alignSelf: "center" }}>
+            <GlassButton
+              label={t("ONBOARDING_CONTINUE")}
+              disabled={!selectedLevel}
+              onPress={() => {
+                navigation.navigate("serviceSelection", {
+                  type: LEVELS.find(level => "key" in level && level.key === selectedLevel)?.type,
+                });
+              }}
+            />
+          </View>
+        </View>
+      </GlassSurface>
     </View>
   );
 }

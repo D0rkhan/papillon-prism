@@ -6,23 +6,24 @@ import { Platform } from "react-native";
 import { getDynamicColorScheme } from "react-native-dynamic-theme";
 
 const FALLBACK_COLORS = {
+  // Papillon Prism palette (see ui/glass/tokens.ts): deep ink background, violet accent.
   light: {
-    primary: "#29947A",
-    tint: "#29947A",
-    background: "#FFFFFF",
-    overground: "#F3F6F7",
-    text: "#000000",
+    primary: "#A855F7",
+    tint: "#A855F7",
+    background: "#F3F4FB",
+    overground: "#EBEDF7",
+    text: "#0B0B14",
     card: "#FFFFFF",
-    item: Platform.OS === "android" ? "#f1f1f1" : "#FFFFFF",
+    item: "#FFFFFF",
   },
   dark: {
-    primary: "#29947A",
-    tint: "#29947A",
-    background: "#000000",
-    overground: "#000000",
-    text: "#FFFFFF",
-    card: "#121212",
-    item: "#121212",
+    primary: "#A855F7",
+    tint: "#A855F7",
+    background: "#07070C",
+    overground: "#07070C",
+    text: "#F5F5FA",
+    card: "#12121B",
+    item: "#151521",
   },
 };
 
@@ -31,7 +32,7 @@ const isMaterialYouAvailable =
 
 function getThemeColors(useMaterialYou: boolean) {
   if (useMaterialYou && isMaterialYouAvailable) {
-    const scheme = getDynamicColorScheme('#29947A');
+    const scheme = getDynamicColorScheme('#A855F7');
     return {
       light: {
         primary: scheme.light.primary,
