@@ -1,41 +1,45 @@
 import React from "react";
 
-import { aurora, motion } from "./tokens";
 import { useGlass } from "./useGlass";
 
-const KEYFRAMES = `
-@keyframes prism-drift-a { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(12vw,6vh) scale(1.12); } }
-@keyframes prism-drift-b { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-10vw,8vh) scale(1.1); } }
-@keyframes prism-drift-c { 0%,100% { transform: translate(0,0) scale(1.05); } 50% { transform: translate(10vw,-7vh) scale(0.95); } }
-@media (prefers-reduced-motion: reduce) { .prism-blob { animation: none !important; } }
+const CSS = `
+@keyframes prism-breathe { 0%,100% { opacity: .9; transform: translate3d(0,0,0) scale(1); } 50% { opacity: 1; transform: translate3d(2vw,1.5vh,0) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .prism-glow { animation: none !important; } }
 `;
 
-const blob = (color: string, left: string, top: string, size: string, anim: string, ms: number, opacity: number): React.CSSProperties => ({
-  position: "absolute",
-  left,
-  top,
-  width: size,
-  height: size,
-  borderRadius: "50%",
-  background: `radial-gradient(circle at center, ${color}E6 0%, ${color}59 45%, ${color}00 70%)`,
-  filter: "blur(20px)",
-  opacity,
-  animation: `${anim} ${ms}ms ease-in-out infinite`,
-  willChange: "transform",
-});
-
-/** Web / Linux desktop aurora: pure CSS, GPU-composited, honours reduced motion. */
+/**
+ * Obsidian backdrop (web / Linux desktop): near-black canvas, two faint light leaks,
+ * a vignette and a fine grain. Quiet by design — the glass catches the light, not the wall.
+ */
 export default function Aurora() {
   const g = useGlass();
-  const o = g.auroraOpacity;
-  const p = motion.auroraPeriodMs;
+  const glow = (color: string, x: string, y: string, size: string, delay: number): React.CSSProperties => ({
+    position: "absolute",
+    left: x,
+    top: y,
+    width: size,
+    height: size,
+    borderRadius: "50%",
+    background: `radial-gradient(circle, ${color} 0%, transparent 65%)`,
+    filter: "blur(40px)",
+    animation: `prism-breathe 26s ease-in-out ${delay}s infinite`,
+    willChange: "transform, opacity",
+  });
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: g.background, pointerEvents: "none" }}>
-      <style>{KEYFRAMES}</style>
-      <div className="prism-blob" style={blob(aurora.indigo, "-30vw", "-35vh", "120vmax", "prism-drift-a", p, o)} />
-      <div className="prism-blob" style={blob(aurora.violet, "45vw", "-20vh", "100vmax", "prism-drift-b", p + 2300, o)} />
-      <div className="prism-blob" style={blob(aurora.cyan, "-20vw", "35vh", "95vmax", "prism-drift-c", p + 4600, o)} />
-      <div className="prism-blob" style={blob(aurora.pink, "50vw", "55vh", "85vmax", "prism-drift-a", p + 6900, o)} />
+      <style>{CSS}</style>
+      <div className="prism-glow" style={glow(g.dark ? "rgba(110,106,246,0.16)" : "rgba(110,106,246,0.10)", "-25vw", "-45vh", "90vmax", 0)} />
+      <div className="prism-glow" style={glow(g.dark ? "rgba(90,184,255,0.07)" : "rgba(90,184,255,0.06)", "55vw", "40vh", "80vmax", -9)} />
+      <div style={{ position: "absolute", inset: 0, background: g.dark ? "radial-gradient(ellipse at 50% 0%, transparent 40%, rgba(0,0,0,0.55) 100%)" : "none" }} />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: g.dark ? 0.06 : 0.03,
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+        }}
+      />
     </div>
   );
 }

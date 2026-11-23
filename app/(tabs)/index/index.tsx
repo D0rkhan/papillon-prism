@@ -21,8 +21,7 @@ import { useTimetableWidgetData } from './hooks/useTimetableWidgetData';
 import { useTimetableWidgetTitle } from './hooks/useTimetableWidgetTitle';
 import HomeTimeTableWidget from './widgets/timetable';
 import GradesWidget from './widgets/Grades';
-import { usePeriodsData } from '../grades/hooks/usePeriodsData';
-import { useGradesData } from '../grades/hooks/useGradesData';
+import { useDisplayPeriod } from '../grades/hooks/useDisplayPeriod';
 import MaskedView from '@react-native-masked-view/masked-view';
 import LinearGradient from 'react-native-linear-gradient';
 import MainTabErrorBoundary from '@/ui/components/MainTabErrorBoundary';
@@ -31,6 +30,10 @@ import Stack from '@/ui/components/Stack';
 import Typography from '@/ui/components/Typography';
 import Icon from '@/ui/components/Icon';
 import Button from '@/ui/new/Button';
+
+import PrismHome from './PrismHome';
+
+const PRISM_HOME = true;
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
@@ -106,11 +109,11 @@ const HomeScreen = () => {
   }, [focused, tabsAppeared, account, welcomeModalSeen, mutateSettings, router]);
 
   const { syncing, refresh } = useHomeData();
-  const { courses } = useTimetableWidgetData();
+  const { courses, upcomingDays } = useTimetableWidgetData();
   const timetableTitle = useTimetableWidgetTitle(courses);
 
-  const { currentPeriod } = usePeriodsData();
-  const { grades, history, averages, refresh: refreshGrades } = useGradesData(currentPeriod);
+  const { currentPeriod, grades: gradesData } = useDisplayPeriod();
+  const { grades, history, averages, refresh: refreshGrades } = gradesData;
 
   const [refreshing, setRefreshing] = React.useState(false);
   const handleRefresh = React.useCallback(async () => {
@@ -152,6 +155,24 @@ const HomeScreen = () => {
     [data]
   );
   const allWidgetsHidden = visibleWidgets.length === 0;
+
+  // Prism dashboard (all platforms). The legacy widget list stays below for reference.
+  if (PRISM_HOME) {
+    return (
+      <PrismHome
+        firstName={account?.firstName}
+        syncing={syncing}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        upcomingDays={upcomingDays}
+        grades={grades}
+        history={history.subject ?? []}
+        studentAverage={averages.student?.value}
+        classAverage={averages.class?.value}
+        periodName={currentPeriod?.name}
+      />
+    );
+  }
 
   return (
     <>

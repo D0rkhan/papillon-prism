@@ -8,8 +8,8 @@ import { getDynamicColorScheme } from "react-native-dynamic-theme";
 const FALLBACK_COLORS = {
   // Papillon Prism palette (see ui/glass/tokens.ts): deep ink background, violet accent.
   light: {
-    primary: "#A855F7",
-    tint: "#A855F7",
+    primary: "#8B7CFF",
+    tint: "#8B7CFF",
     background: "#F3F4FB",
     overground: "#EBEDF7",
     text: "#0B0B14",
@@ -17,13 +17,13 @@ const FALLBACK_COLORS = {
     item: "#FFFFFF",
   },
   dark: {
-    primary: "#A855F7",
-    tint: "#A855F7",
-    background: "#07070C",
-    overground: "#07070C",
-    text: "#F5F5FA",
-    card: "#12121B",
-    item: "#151521",
+    primary: "#8B7CFF",
+    tint: "#8B7CFF",
+    background: "#050507",
+    overground: "#050507",
+    text: "#EDEDF2",
+    card: "#0E0E12",
+    item: "#111116",
   },
 };
 

@@ -19,6 +19,7 @@ import { useGradesData } from './hooks/useGradesData';
 import Typography from '@/ui/new/Typography';
 import Averages from './atoms/Averages';
 import EpflEntryCard from './atoms/EpflEntryCard';
+import PrismGrades from './PrismGrades';
 import GradesEmptyState from './atoms/GradesEmptyState';
 import GradesLoading from './atoms/GradesLoading';
 import List from '@/ui/new/List';
@@ -381,4 +382,6 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GradesView;
+// Prism grades screen (all platforms); the legacy view is kept for reference.
+export default PrismGrades;
+export { GradesView as LegacyGradesView };

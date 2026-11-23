@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { ComponentResult } from "@/core/bac/engine";
@@ -124,7 +124,7 @@ export function ObjectifView({ demo = false }: { demo?: boolean }) {
     <View style={{ flex: 1, backgroundColor: g.background }}>
       <Aurora />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + space.xxl, paddingBottom: insets.bottom + 120, paddingHorizontal: space.lg, alignSelf: "center", width: Math.min(width, 760) }}
+        contentContainerStyle={{ paddingTop: insets.top + (Platform.OS === "web" ? 124 : space.xxl), paddingBottom: insets.bottom + 120, paddingHorizontal: space.lg, alignSelf: "center", width: Math.min(width, 760) }}
         refreshControl={<RefreshControl refreshing={loading && !!analysis} onRefresh={refresh} tintColor={aurora.cyan} />}
       >
         <GText variant="overline" tone="secondary">Bac {profile.session} · Objectif{demo ? " · démo" : ""}</GText>
@@ -154,7 +154,7 @@ export function ObjectifView({ demo = false }: { demo?: boolean }) {
             )}
 
             {/* Hero */}
-            <GlassSurface padding={space.xl} style={{ marginBottom: space.lg }} tint={probabilityColor(p.competitive)}>
+            <GlassSurface padding={space.xl} style={{ marginBottom: space.lg }}>
               <View style={{ flexDirection: width > 520 ? "row" : "column", alignItems: "center", gap: space.xl }}>
                 <ProbabilityRing value={p.admissible} secondary={p.competitive} color={probabilityColor(p.admissible)} size={196}>
                   <GText variant="display" tabular>{Math.round(p.admissible * 100)}</GText>

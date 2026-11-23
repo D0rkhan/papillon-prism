@@ -6,3 +6,4 @@ export type { GlassSurfaceProps } from "./GlassSurface";
 export { Chip, DistributionChart, GText, Meter, ProbabilityRing } from "./primitives";
 export * from "./tokens";
 export { useGlass } from "./useGlass";
+export { IconButton, RangeBar, SectionHeader, Sparkline, Stat } from "./data";

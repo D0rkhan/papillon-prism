@@ -10,6 +10,9 @@ const path = require("node:path");
 const APP_DIR = path.join(__dirname, "app");
 const ORIGIN = "prism://app";
 
+// Debug / tests: run on a separate profile (PRISM_USER_DATA=/path) without touching the real one.
+if (process.env.PRISM_USER_DATA) { app.setPath("userData", process.env.PRISM_USER_DATA); }
+
 protocol.registerSchemesAsPrivileged([
   { scheme: "prism", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);

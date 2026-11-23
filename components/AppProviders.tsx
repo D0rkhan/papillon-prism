@@ -32,14 +32,15 @@ export function AppProviders({ children }: AppProvidersProps) {
   const theme = useMemo(() => {
     const defaultTheme = createDefaultTheme(useMaterialYou, color.mainColor);
     const darkTheme = createDarkTheme(useMaterialYou, color.mainColor);
-    const newScheme = selectedTheme === 'auto' ? (colorScheme === 'dark' ? darkTheme : defaultTheme) : (selectedTheme === 'dark' ? darkTheme : defaultTheme);
+    // Prism is dark-first: light only when explicitly chosen.
+    const newScheme = selectedTheme === 'light' ? defaultTheme : darkTheme;
     return newScheme;
   }, [colorScheme, color, selectedTheme, useMaterialYou]);
 
   // Memoize background color to prevent string recreation
   const backgroundColor = useMemo(() => {
-    return colorScheme === 'dark' ? '#07070C' : '#F3F4FB';
-  }, [colorScheme]);
+    return selectedTheme === 'light' ? '#F4F4F6' : '#050507';
+  }, [selectedTheme]);
 
   // Combined effect for system UI updates to reduce effect overhead
   useEffect(() => {

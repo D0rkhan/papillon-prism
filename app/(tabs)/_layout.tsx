@@ -45,7 +45,7 @@ function TabLayoutContent() {
 
   return (
     <NativeTabs
-      tintColor={theme.colors.tint}
+      tintColor={theme.dark ? "#EDEDF2" : theme.colors.tint}
       labelStyle={tabLabelStyle}
       labelVisibilityMode={showTabBarLabels ? "labeled" : "unlabeled"}
       rippleColor={theme.colors.tint + '22'}

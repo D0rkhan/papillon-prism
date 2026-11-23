@@ -2,12 +2,20 @@ import React from "react";
 import { Pressable, StyleProp, Text, TextProps, TextStyle, View, ViewStyle } from "react-native";
 import Svg, { Circle, Defs, Line, LinearGradient, Rect, Stop, Text as SvgText } from "react-native-svg";
 
-import { useFont } from "@/utils/theme/fonts";
 
 import { aurora, radius, space, type, TypeVariant, withAlpha } from "./tokens";
 import { useGlass } from "./useGlass";
 
 // ───────────────────────────── Text ─────────────────────────────
+
+/** Prism always speaks Fixel: a neutral grotesk that reads "tool", not "toy". */
+const FIXEL: Record<string, string> = {
+  light: "fixeltext-light",
+  regular: "fixeltext-regular",
+  medium: "fixeltext-medium",
+  semibold: "fixeltext-semibold",
+  bold: "fixeltext-bold",
+};
 
 export interface GTextProps extends TextProps {
   variant?: TypeVariant;
@@ -19,7 +27,6 @@ export interface GTextProps extends TextProps {
 
 export function GText({ variant = "body", tone = "primary", color, align, tabular, style, ...rest }: GTextProps) {
   const g = useGlass();
-  const font = useFont();
   const t = type[variant];
   const c = color ?? (tone === "primary" ? g.text : tone === "secondary" ? g.textSecondary : g.textTertiary);
   return (
@@ -27,14 +34,15 @@ export function GText({ variant = "body", tone = "primary", color, align, tabula
       {...rest}
       style={[
         {
-          fontFamily: font(t.weight),
+          fontFamily: FIXEL[t.weight],
           fontSize: t.size,
           lineHeight: t.line,
           color: c,
           textAlign: align,
-          letterSpacing: variant === "overline" ? 1.2 : variant === "display" ? -1.5 : undefined,
+          letterSpacing: variant === "overline" ? 1.1 : variant === "display" ? -1.6 : variant === "title1" ? -0.6 : variant === "title2" ? -0.3 : undefined,
           textTransform: variant === "overline" ? "uppercase" : undefined,
-          fontVariant: tabular ? ["tabular-nums"] : undefined,
+          // Tabular figures only for small aligned numbers; big numbers keep proportional digits.
+          fontVariant: tabular && (variant === "body" || variant === "callout" || variant === "caption") ? ["tabular-nums"] : undefined,
         },
         style,
       ]}

@@ -1,4 +1,5 @@
 import { Period } from "@/services/shared/grade";
+import { periodRole } from "@/utils/bac/fromPapillon";
 import { warn } from "@/utils/logger/logger";
 
 export function getCurrentPeriod(periods: Period[]): Period | undefined {
@@ -18,8 +19,10 @@ export function getCurrentPeriod(periods: Period[]): Period | undefined {
     "Évaluation spécifique de DNL",
   ];
 
-  periods = periods
-    .filter(period => !excludedNames.includes(period.name))
+  // Case- and accent-insensitive: PRONOTE may name it "bac blanc", "BAC BLANC"…
+  const excluded = new Set(excludedNames.map(n => n.toLowerCase()));
+  const regular = periods.filter(p => periodRole(p.name) === "regular");
+  periods = (regular.length ? regular : periods.filter(p => !excluded.has(p.name.toLowerCase())))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   for (const period of periods) {

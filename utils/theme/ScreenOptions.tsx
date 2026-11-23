@@ -30,6 +30,14 @@ export const useScreenOptions = (): any => {
       source: require("@/assets/icons/back.svg"),
     } : undefined,
     headerLeft: Platform.OS == 'android' ? () => <AndroidBackButton /> : undefined,
-    headerBackVisible: Platform.OS == 'android' ? false : undefined
+    headerBackVisible: Platform.OS == 'android' ? false : undefined,
+    // Web / desktop: the tab bar floats at the top; keep every header below it.
+    ...(Platform.OS === "web" ? {
+      headerStatusBarHeight: 64,
+      headerShadowVisible: false,
+      headerStyle: { backgroundColor: "#050507" },
+      headerTitleStyle: { fontFamily: "fixeltext-semibold", fontSize: 17, color: "#EDEDF2" },
+      headerTintColor: "#EDEDF2",
+    } : {}),
   }), [font]);
 };

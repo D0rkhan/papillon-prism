@@ -69,12 +69,12 @@ export default function GlassSurface({
       <View style={[StyleSheet.absoluteFill, shape]} pointerEvents="none">
         {material}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: fill }]} />
-        {tint ? <View style={[StyleSheet.absoluteFill, { backgroundColor: tint, opacity: g.dark ? 0.12 : 0.1 }]} /> : null}
+        {tint ? <View style={[StyleSheet.absoluteFill, { backgroundColor: tint, opacity: 0.08 }]} /> : null}
         <LinearGradient
           colors={[g.glassHighlight, "transparent"]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.35 }}
-          style={[StyleSheet.absoluteFill, { opacity: 0.55 }]}
+          style={[StyleSheet.absoluteFill, { opacity: g.dark ? 0.35 : 0.6 }]}
         />
         <View style={[StyleSheet.absoluteFill, shape, { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: g.glassBorder }]} />
       </View>

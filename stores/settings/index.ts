@@ -14,7 +14,7 @@ export const DEFAULT_MATERIAL_YOU_ENABLED =
 const defaultPersonalization: Personalization = {
   fontFamily: "sn-pro",
   colorSelected: Colors.PURPLE,
-  theme: "auto",
+  theme: "dark",
   useMaterialYou: DEFAULT_MATERIAL_YOU_ENABLED,
   iOSBottomAccessoryEnabled: true,
   showTabBarLabels: true,

@@ -12,8 +12,8 @@ export default function GlassSurface({ radius = R.lg, intensity = "regular", tin
   const web = {
     backdropFilter: `blur(${g.blurAmount}px) saturate(180%)`,
     WebkitBackdropFilter: `blur(${g.blurAmount}px) saturate(180%)`,
-    backgroundImage: `linear-gradient(180deg, ${g.glassHighlight} 0%, transparent 35%)${tint ? `, linear-gradient(0deg, ${tint}1F, ${tint}1F)` : ""}`,
-    boxShadow: `0 12px 32px ${g.glassShadow}, inset 0 1px 0 ${g.glassHighlight}`,
+    backgroundImage: `linear-gradient(180deg, ${g.dark ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.5)"} 0%, transparent 42%)${tint ? `, linear-gradient(0deg, ${tint}14, ${tint}14)` : ""}`,
+    boxShadow: `inset 0 1px 0 ${g.glassHighlight}, 0 24px 48px -24px ${g.glassShadow}`,
   } as unknown as ViewStyle;
 
   return (

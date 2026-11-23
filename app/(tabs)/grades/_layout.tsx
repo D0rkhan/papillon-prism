@@ -17,6 +17,8 @@ export default function Layout() {
       <Stack.Screen
         name="index"
         options={{
+          // Prism grades screen draws its own title and period picker.
+          headerShown: false,
           ...androidHeaderProps,
           // The custom title on this screen suppresses the bar's own scroll-edge
           // material, so iOS 26 gets our progressive blur instead.

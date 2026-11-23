@@ -2,7 +2,10 @@ import { useTheme } from "expo-router/react-navigation";
 
 import { GlassPalette, palettes } from "./tokens";
 
-/** Current Liquid Glass palette, following the app's light/dark theme. */
+/**
+ * Current Obsidian Glass palette. Prism is dark-first: the light palette is only used
+ * when the user explicitly chose the light theme.
+ */
 export function useGlass(): GlassPalette & { tint: string } {
   const theme = useTheme();
   const palette = theme.dark ? palettes.dark : palettes.light;

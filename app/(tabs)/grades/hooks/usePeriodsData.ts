@@ -6,6 +6,7 @@ import { getManager } from "@/services/shared";
 import { Period } from "@/services/shared/grade";
 import { Capabilities, ServiceFailure } from "@/services/shared/types";
 import { useSettingsStore } from "@/stores/settings";
+import { periodRole } from "@/utils/bac/fromPapillon";
 import { getCurrentPeriod } from "@/utils/grades/helper/period";
 import { warn } from "@/utils/logger/logger";
 
@@ -77,7 +78,8 @@ export function usePeriodsData(): UsePeriodsDataResult {
 
         if (!hasUserSelection.current && savedPeriodName) {
           const saved = sorted.find(p => p.name === savedPeriodName);
-          if (saved) { return saved; }
+          // A mock-exam period is never restored as the default view.
+          if (saved && periodRole(saved.name) === "regular") { return saved; }
         }
 
         return sorted.length > 0 ? getCurrentPeriod(sorted) : undefined;

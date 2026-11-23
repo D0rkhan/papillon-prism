@@ -32,8 +32,10 @@ const nextFrame = () => new Promise<void>(resolve => setTimeout(resolve, 16));
  * bac / EPFL engine and the decision tools. Heavy work is split in steps with a frame
  * in between, so the screen stays responsive on a phone.
  */
-export function useBacAnalysis(options: { demo?: boolean } = {}) {
+export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {}) {
   const demo = options.demo ?? false;
+  // Lite: projection only (home widget) — no levers, scenarios or backtest.
+  const lite = options.lite ?? false;
   const profile = useBacStore(s => s.profile);
   const examResults = useBacStore(s => s.examResults);
   const competitive = useBacStore(s => s.competitive);
@@ -131,7 +133,7 @@ export function useBacAnalysis(options: { demo?: boolean } = {}) {
       setTargets({});
       try {
         await nextFrame();
-        const { prepared, result, output } = analyze(input);
+        const { prepared, result, output } = analyze(lite ? { ...input, settings: { simulations: 8000 } } : input);
         if (id !== runId.current) { return; }
         setAnalysis(prev => ({
           result,
@@ -142,6 +144,7 @@ export function useBacAnalysis(options: { demo?: boolean } = {}) {
           gradesCount: grades.length,
           eligibleProfile: isEpflEligibleProfile(profile),
         }));
+        if (lite) { return; }
         await nextFrame();
         const lev = leverage(prepared, 1, 4000);
         await nextFrame();
@@ -157,7 +160,7 @@ export function useBacAnalysis(options: { demo?: boolean } = {}) {
         if (id === runId.current) { setComputing(false); }
       }
     })();
-  }, [current, archive, profile, examResults, competitive, demo]);
+  }, [current, archive, profile, examResults, competitive, demo, lite]);
 
   const targetDelta = useBacStore(s => s.targetDelta);
   const currentAdmissible = analysis?.result.probabilities.admissible ?? 0;

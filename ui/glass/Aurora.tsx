@@ -3,62 +3,42 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import { aurora, motion } from "./tokens";
+import { motion } from "./tokens";
 import { useGlass } from "./useGlass";
 
-interface Blob { color: string; x: number; y: number; r: number; dx: number; dy: number }
-
-const BLOBS: Blob[] = [
-  { color: aurora.indigo, x: 0.15, y: 0.08, r: 0.75, dx: 0.12, dy: 0.06 },
-  { color: aurora.violet, x: 0.9, y: 0.22, r: 0.7, dx: -0.1, dy: 0.08 },
-  { color: aurora.cyan, x: 0.25, y: 0.62, r: 0.65, dx: 0.1, dy: -0.07 },
-  { color: aurora.pink, x: 0.85, y: 0.85, r: 0.6, dx: -0.08, dy: -0.06 },
-];
-
-function AuroraBlob({ blob, index, width, height, opacity }: { blob: Blob; index: number; width: number; height: number; opacity: number }) {
+function Glow({ color, opacity, x, y, size, drift, delay }: { color: string; opacity: number; x: number; y: number; size: number; drift: number; delay: number }) {
   const t = useSharedValue(0);
   useEffect(() => {
-    t.value = withRepeat(
-      withTiming(1, { duration: motion.auroraPeriodMs + index * 2300, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
-  }, [t, index]);
-
-  const size = Math.max(width, height) * blob.r * 2;
+    t.value = withRepeat(withTiming(1, { duration: motion.auroraPeriodMs + delay, easing: Easing.inOut(Easing.sin) }), -1, true);
+  }, [t, delay]);
   const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: blob.x * width - size / 2 + blob.dx * width * t.value },
-      { translateY: blob.y * height - size / 2 + blob.dy * height * t.value },
-      { scale: 1 + 0.12 * t.value },
-    ],
+    transform: [{ translateX: x - size / 2 + drift * t.value }, { translateY: y - size / 2 + drift * 0.6 * t.value }],
   }));
-
+  const id = `glow-${Math.round(x)}-${Math.round(y)}`;
   return (
-    <Animated.View style={[{ position: "absolute", width: size, height: size, opacity }, style]}>
+    <Animated.View style={[{ position: "absolute", width: size, height: size }, style]}>
       <Svg width={size} height={size}>
         <Defs>
-          <RadialGradient id={`aurora-${index}`} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={blob.color} stopOpacity={0.9} />
-            <Stop offset="0.45" stopColor={blob.color} stopOpacity={0.35} />
-            <Stop offset="1" stopColor={blob.color} stopOpacity={0} />
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor={color} stopOpacity={opacity} />
+            <Stop offset="1" stopColor={color} stopOpacity={0} />
           </RadialGradient>
         </Defs>
-        <Rect x={0} y={0} width={size} height={size} fill={`url(#aurora-${index})`} />
+        <Rect width={size} height={size} fill={`url(#${id})`} />
       </Svg>
     </Animated.View>
   );
 }
 
-/** Slowly drifting aurora behind the glass: what gives the material something to refract. */
+/** Obsidian backdrop (Android / iOS): near-black canvas with two faint light leaks. */
 export default function Aurora() {
   const g = useGlass();
   const { width, height } = useWindowDimensions();
+  const m = Math.max(width, height);
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: g.background, overflow: "hidden" }]} pointerEvents="none">
-      {BLOBS.map((b, i) => (
-        <AuroraBlob key={i} blob={b} index={i} width={width} height={height} opacity={g.auroraOpacity} />
-      ))}
+      <Glow color="#6E6AF6" opacity={g.dark ? 0.2 : 0.12} x={width * 0.1} y={-height * 0.05} size={m * 1.3} drift={width * 0.05} delay={0} />
+      <Glow color="#5AB8FF" opacity={g.dark ? 0.08 : 0.06} x={width * 0.95} y={height * 0.85} size={m} drift={-width * 0.05} delay={4000} />
     </View>
   );
 }
