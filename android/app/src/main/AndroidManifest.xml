@@ -36,7 +36,7 @@
         <data android:scheme="papillonprism"/>
         <data android:scheme="izly"/>
         <data android:scheme="skoapp-prod"/>
-        <data android:scheme="exp+papillon"/>
+        <data android:scheme="exp+papillon-prism"/>
       </intent-filter>
     </activity>
   </application>

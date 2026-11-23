@@ -32,6 +32,7 @@ const PINNED = {
   // Native-only modules replaced by web implementations.
   "react-native-linear-gradient": path.resolve(__dirname, "stubs/web/react-native-linear-gradient.tsx"),
   "react-native-dynamic-theme": path.resolve(__dirname, "stubs/web/react-native-dynamic-theme.js"),
+  "react-native-webview": path.resolve(__dirname, "stubs/web/react-native-webview.tsx"),
   "@expo/ui/swift-ui": path.resolve(__dirname, "stubs/web/native-ui.js"),
   "@expo/ui/swift-ui/modifiers": path.resolve(__dirname, "stubs/web/native-ui.js"),
   "@expo/ui/jetpack-compose": path.resolve(__dirname, "stubs/web/native-ui.js"),

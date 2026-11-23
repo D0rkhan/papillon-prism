@@ -45,6 +45,8 @@ console.info = (...args) => {
 // Web / Linux desktop: Skia draws through CanvasKit (WebAssembly), which must be loaded
 // before any screen renders. Native platforms start right away.
 if (typeof document !== "undefined") {
+  // Desktop app: school-service requests go through the Electron shell (no CORS).
+  require("./utils/desktop/bridge").installDesktopFetch();
   require("@shopify/react-native-skia/lib/module/web")
     .LoadSkiaWeb({ locateFile: () => "/canvaskit.wasm" })
     .catch((e) => console.error("[skia] CanvasKit failed to load", e))

@@ -1,0 +1,44 @@
+{
+  "name": "papillon-prism-desktop",
+  "productName": "Papillon Prism",
+  "version": "8.6.2",
+  "description": "Papillon Prism — version bureau Linux",
+  "license": "GPL-3.0-only",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "build:web": "cd .. && npx expo export --platform web --output-dir dist-web && node desktop/scripts/copy-web.cjs",
+    "start": "electron .",
+    "dev": "npm run build:web && electron .",
+    "dist": "npm run build:web && electron-builder --linux AppImage",
+    "dist:pacman": "npm run build:web && electron-builder --linux pacman"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.papillonprism.desktop",
+    "productName": "Papillon Prism",
+    "executableName": "papillon-prism",
+    "directories": {
+      "output": "out"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "webview-preload.cjs",
+      "app/**/*",
+      "icon.png"
+    ],
+    "linux": {
+      "category": "Education",
+      "icon": "icon.png",
+      "synopsis": "Vie scolaire et objectif EPFL",
+      "maintainer": "Papillon Prism",
+      "syncDesktopName": true,
+      "executableName": "papillon-prism"
+    }
+  },
+  "desktopName": "papillon-prism.desktop"
+}

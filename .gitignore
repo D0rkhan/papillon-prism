@@ -60,3 +60,11 @@ secrets.json
 .claude/
 .codex/
 graphify-out/
+
+# Papillon Prism builds
+dist-web/
+public/canvaskit.wasm
+desktop/out/
+desktop/node_modules/
+desktop/app/
+/android/
