@@ -36,6 +36,10 @@ export interface Grade extends GenericInterface {
   correctionFile?: Attachment;
   bonus?: boolean;
   optional?: boolean;
+  /** Pronote's "Ramener sur 20" (false: the grade counts with its own scale). */
+  outOf20?: boolean;
+  /** Teacher's comment on this student's grade. */
+  gradeComment?: string;
   outOf?: GradeScore;
   coefficient: number;
   studentScore?: GradeScore;

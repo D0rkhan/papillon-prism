@@ -16,6 +16,10 @@ export interface ConsentStatus {
 }
 
 export const checkConsent = async (): Promise<ConsentStatus> => {
+  // Prism is a personal build: no analytics, and no consent screen to answer.
+  if (!storage.getBoolean(GIVEN_KEY)) {
+    await setConsent("none").catch(() => undefined);
+  }
   return {
     given: storage.getBoolean(GIVEN_KEY) ?? false,
     level: (storage.getString(LEVEL_KEY) as ConsentLevel | undefined) ?? "none",

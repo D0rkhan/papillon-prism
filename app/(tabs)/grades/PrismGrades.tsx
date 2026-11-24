@@ -1,31 +1,33 @@
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
-import { Platform, Pressable, RefreshControl, ScrollView, TextInput, useWindowDimensions, View, ViewStyle } from "react-native";
+import { Linking, Platform, Pressable, TextInput, useWindowDimensions, View, ViewStyle } from "react-native";
 import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { overallAverage, subjectAverage } from "@/core/bac/normalize";
 import { useLoadErrorAlert } from "@/hooks/useLoadErrorAlert";
 import { allowAllAuthRetries } from "@/services/auth/coordinator";
 import type { Grade, Period, Subject } from "@/services/shared/grade";
 import {
   accent,
-  Aurora,
-  Chip,
+  ActionButton,
+  EmptyState,
   GlassSurface,
   gradeColor,
   GText,
+  Icon,
+  PrismScreen,
   radius,
   RangeBar,
   SectionHeader,
-  semantic,
+  Segmented,
+  SkeletonCards,
   space,
   Sparkline,
   Stat,
+  StatusNote,
   useGlass,
 } from "@/ui/glass";
 import { periodRole } from "@/utils/bac/fromPapillon";
-import { toAverageable } from "@/utils/grades/algorithms/helpers";
+import { periodOverallAverage, subjectAverageInfo, subjectTrend } from "@/utils/grades/average";
 import { getSubjectColor } from "@/utils/subjects/colors";
 import { getSubjectName } from "@/utils/subjects/name";
 
@@ -42,7 +44,6 @@ function periodLabel(p: Period): string {
 }
 
 function PeriodPills({ periods, current, onSelect }: { periods: Period[]; current?: Period; onSelect: (p: Period) => void }) {
-  const g = useGlass();
   const ordered = useMemo(
     () => [...periods].sort((a, b) => {
       const ra = periodRole(a.name) === "regular" ? 0 : 1;
@@ -51,32 +52,14 @@ function PeriodPills({ periods, current, onSelect }: { periods: Period[]; curren
     }),
     [periods]
   );
+  const key = (p: Period) => `${p.id}|${p.name}`;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.xs, padding: 3 }}>
-      {ordered.map(p => {
-        const active = current?.id === p.id && current?.name === p.name;
-        return (
-          <Pressable
-            key={`${p.id}-${p.name}`}
-            onPress={() => onSelect(p)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            style={(state) => [
-              {
-                paddingHorizontal: space.md,
-                height: 32,
-                justifyContent: "center",
-                borderRadius: radius.pill,
-                backgroundColor: active ? g.inverse : (state as { hovered?: boolean }).hovered ? g.glassFillStrong : "transparent",
-              },
-              web({ cursor: "pointer" }),
-            ]}
-          >
-            <GText variant="caption" color={active ? g.onInverse : g.textSecondary}>{periodLabel(p)}</GText>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    <Segmented
+      scroll
+      options={ordered.map(p => ({ value: key(p), label: periodLabel(p) }))}
+      value={current ? key(current) : undefined}
+      onChange={k => { const p = ordered.find(x => key(x) === k); if (p) { onSelect(p); } }}
+    />
   );
 }
 
@@ -88,7 +71,8 @@ function GradeLine({ grade }: { grade: Grade }) {
   const on20 = (v / outOf) * 20;
   const cls = usable(grade.averageScore) ? ((grade.averageScore?.value ?? 0) / outOf) * 20 : undefined;
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.sm, borderTopWidth: 1, borderTopColor: g.separator }}>
+    <View style={{ borderTopWidth: 1, borderTopColor: g.separator }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.sm }}>
       <View style={{ flex: 1 }}>
         <GText variant="callout" numberOfLines={1}>{grade.description || "Évaluation"}</GText>
         <GText variant="caption" tone="tertiary">
@@ -97,6 +81,7 @@ function GradeLine({ grade }: { grade: Grade }) {
           {cls !== undefined ? ` · classe ${fmt(cls, 1)}` : ""}
           {grade.optional ? " · facultative" : ""}
           {grade.bonus ? " · bonus" : ""}
+          {grade.outOf20 === false ? " · non ramenée /20" : ""}
         </GText>
       </View>
       <GText variant="title3" tabular color={ok ? gradeColor(on20) : g.textTertiary}>
@@ -104,26 +89,33 @@ function GradeLine({ grade }: { grade: Grade }) {
         <GText variant="caption" tone="tertiary">/{outOf}</GText>
       </GText>
     </View>
+    {(grade.gradeComment || grade.subjectFile || grade.correctionFile) ? (
+      <View style={{ paddingBottom: space.sm, gap: 4 }}>
+        {grade.gradeComment ? <GText variant="caption" tone="secondary" style={{ fontStyle: "italic" }}>« {grade.gradeComment} »</GText> : null}
+        <View style={{ flexDirection: "row", gap: space.md }}>
+          {[["Sujet", grade.subjectFile], ["Corrigé", grade.correctionFile]].map(([label, file]) => file && typeof file === "object" && file.url ? (
+            <Pressable key={label as string} onPress={() => Linking.openURL(file.url)} style={[{ flexDirection: "row", alignItems: "center", gap: 4 }, web({ cursor: "pointer" })]}>
+              <Icon name="Link" size={13} color={g.tint} />
+              <GText variant="caption" color={g.tint}>{label as string}</GText>
+            </Pressable>
+          ) : null)}
+        </View>
+      </View>
+    ) : null}
+    </View>
   );
 }
 
 function SubjectCard({ subject, expanded, onToggle }: { subject: Subject; expanded: boolean; onToggle: () => void }) {
   const g = useGlass();
   const grades = subject.grades ?? [];
-  const official = usable(subject.studentAverage) ? ((subject.studentAverage!.value) / (subject.outOf?.value || 20)) * 20 : undefined;
-  const computed = subjectAverage(toAverageable(grades)) ?? undefined;
-  const avg = official ?? computed;
+  const info = subjectAverageInfo(subject);
+  const official = info.source === "pronote" ? info.value ?? undefined : undefined;
+  const computed = info.computed ?? undefined;
+  const avg = info.value ?? undefined;
   const cls = usable(subject.classAverage) ? subject.classAverage.value : undefined;
   const color = getSubjectColor(subject.name);
-  const trend = useMemo(() => {
-    const sorted = [...grades].filter(gr => usable(gr.studentScore)).sort((a, b) => (a.givenAt?.getTime() ?? 0) - (b.givenAt?.getTime() ?? 0));
-    const out: number[] = [];
-    for (let i = 0; i < sorted.length; i++) {
-      const a = subjectAverage(toAverageable(sorted.slice(0, i + 1)));
-      if (a !== null) { out.push(a); }
-    }
-    return out;
-  }, [grades]);
+  const trend = useMemo(() => subjectTrend(subject), [subject]);
 
   return (
     <Reanimated.View layout={LinearTransition.duration(220)}>
@@ -169,7 +161,6 @@ function SubjectCard({ subject, expanded, onToggle }: { subject: Subject; expand
 export default function PrismGrades() {
   const g = useGlass();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const columns = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
 
@@ -193,15 +184,12 @@ export default function PrismGrades() {
     await refreshGrades();
   }, [refreshPeriods, refreshGrades]);
 
-  const computedOverall = useMemo(
-    () => overallAverage(subjects.map(s => ({ average: subjectAverage(toAverageable(s.grades ?? [])) }))),
-    [subjects]
-  );
+  const overall = useMemo(() => periodOverallAverage(subjects, averages.student), [subjects, averages.student]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = subjects.filter(s => !q || getSubjectName(s.name).toLowerCase().includes(q) || (s.grades ?? []).some(gr => gr.description?.toLowerCase().includes(q)));
-    const avgOf = (s: Subject) => (usable(s.studentAverage) ? s.studentAverage!.value : subjectAverage(toAverageable(s.grades ?? [])) ?? -1);
+    const avgOf = (s: Subject) => subjectAverageInfo(s).value ?? -1;
     return [...list].sort((a, b) =>
       sort === "name" ? getSubjectName(a.name).localeCompare(getSubjectName(b.name))
         : sort === "average" ? avgOf(b) - avgOf(a)
@@ -209,25 +197,19 @@ export default function PrismGrades() {
     );
   }, [subjects, sort, query]);
 
-  const official = averages.student?.value;
   const loading = loadingPeriods || loadingGrades;
   const rows: Subject[][] = [];
   for (let i = 0; i < shown.length; i += columns) { rows.push(shown.slice(i, i + columns)); }
 
   return (
-    <View style={{ flex: 1, backgroundColor: g.background }}>
-      <Aurora />
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={g.textSecondary} />}
-        contentContainerStyle={{ paddingTop: insets.top + (Platform.OS === "web" ? 84 : space.xl), paddingBottom: insets.bottom + 110, paddingHorizontal: space.xl }}
-      >
-        <View style={{ width: "100%", maxWidth: 1120, alignSelf: "center", gap: space.xl }}>
-          <View style={{ gap: space.md }}>
-            <GText variant="title1">Notes</GText>
-            <GlassSurface radius={radius.pill} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
-              <PeriodPills periods={periods} current={currentPeriod} onSelect={p => { setExpanded(null); setCurrentPeriod(p); }} />
-            </GlassSurface>
-          </View>
+    <PrismScreen
+      title="Notes"
+      overline={currentPeriod ? periodLabel(currentPeriod) : undefined}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      actions={<ActionButton icon="Pie" label="Détail des calculs" onPress={() => router.push("/(features)/prism/calculs")} />}
+    >
+          {periods.length > 0 && <PeriodPills periods={periods} current={currentPeriod} onSelect={p => { setExpanded(null); setCurrentPeriod(p); }} />}
 
           <View style={{ flexDirection: width >= 720 ? "row" : "column", gap: space.lg }}>
             <GlassSurface padding={space.xl} radius={18} style={{ flex: 1.4 }}>
@@ -235,9 +217,10 @@ export default function PrismGrades() {
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xxl, alignItems: "flex-end" }}>
                 <Stat
                   label="Moyenne générale"
-                  value={official !== undefined ? fmt(official) : computedOverall !== null ? fmt(computedOverall) : "—"}
+                  value={overall.value !== null ? fmt(overall.value) : "—"}
                   unit="/20"
-                  footnote={official !== undefined ? "Pronote" : computedOverall !== null ? "Calculée par Prism" : undefined}
+                  color={overall.value !== null ? gradeColor(overall.value) : undefined}
+                  footnote={overall.source === "pronote" ? "Pronote" : overall.source === "computed" ? "Calculée par Prism" : undefined}
                 />
                 {averages.class && <Stat label="Classe" value={fmt(averages.class.value)} unit="/20" />}
                 {rank && <Stat label="Rang" value={String(rank.value)} />}
@@ -271,20 +254,17 @@ export default function PrismGrades() {
                 style={[{ height: 38, paddingHorizontal: space.lg, color: g.text, fontFamily: "fixeltext-regular", fontSize: 14 }, web({ outlineStyle: "none" })]}
               />
             </GlassSurface>
-            <View style={{ flexDirection: "row", gap: space.xs }}>
-              {([["recent", "Récentes"], ["average", "Moyenne"], ["name", "A–Z"]] as [Sort, string][]).map(([k, label]) => (
-                <Chip key={k} label={label} color={sort === k ? g.text : g.textTertiary} onPress={() => setSort(k)} />
-              ))}
-            </View>
+            <Segmented
+              options={[{ value: "recent", label: "Récentes" }, { value: "average", label: "Moyenne" }, { value: "name", label: "A–Z" }]}
+              value={sort}
+              onChange={v => setSort(v as Sort)}
+            />
           </View>
 
           {loading && subjects.length === 0 ? (
-            <GText variant="callout" tone="tertiary">Chargement des notes…</GText>
+            <SkeletonCards count={columns * 2} lines={1} />
           ) : shown.length === 0 ? (
-            <GlassSurface padding={space.xxl} radius={18} style={{ alignItems: "center" }}>
-              <GText variant="title3">Aucune note</GText>
-              <GText variant="callout" tone="tertiary">Rien sur cette période pour l'instant.</GText>
-            </GlassSurface>
+            <EmptyState icon="Grades" title={query ? "Aucun résultat" : "Aucune note"} message={query ? "Essaie un autre mot." : "Rien sur cette période pour l'instant."} />
           ) : (
             <View style={{ gap: space.md }}>
               {rows.map((row, i) => (
@@ -301,10 +281,8 @@ export default function PrismGrades() {
           )}
 
           {gradesFailures.length > 0 && (
-            <GText variant="caption" color={semantic.warning}>Certaines données n'ont pas pu être mises à jour.</GText>
+            <StatusNote tone="warning" text="Certaines notes n'ont pas pu être mises à jour : ce qui s'affiche vient du dernier enregistrement." />
           )}
-        </View>
-      </ScrollView>
-    </View>
+    </PrismScreen>
   );
 }

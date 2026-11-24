@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { getManager } from "@/services/shared";
 import type { Period } from "@/services/shared/grade";
+import { Capabilities } from "@/services/shared/types";
 import { periodRole } from "@/utils/bac/fromPapillon";
 
 import { useGradesData } from "./useGradesData";
@@ -23,6 +25,9 @@ export function useDisplayPeriod() {
   useEffect(() => {
     const current = periodsData.currentPeriod;
     if (!current || override || grades.loading || grades.grades.length > 0 || handled === current.name) { return; }
+    // An empty answer from the cache (app just opened, not synced yet) proves
+    // nothing: only a live answer may send the screen back a trimester.
+    if (!getManager(true)?.isLive(Capabilities.GRADES)) { return; }
     const regular = periodsData.periods
       .filter(p => periodRole(p.name) === "regular")
       .sort((a, b) => a.start.getTime() - b.start.getTime());

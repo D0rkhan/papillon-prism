@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { t } from 'i18next';
 import { instance } from "@blockshub/pawnote-lts";
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { getWeekNumberFromDate } from '@/database/useHomework';
 import { AuthFailureReason } from '@/services/auth/types';
@@ -21,6 +22,9 @@ import { getServiceName } from '@/utils/services/helper';
 const REMOVED_SERVICE_ID = 9;
 
 const HOME_SYNC_TTL_MS = 5 * 60 * 1000;
+// Coming back to the app (or leaving it open on the desktop) re-syncs past this.
+const AUTO_SYNC_MS = 10 * 60 * 1000;
+const AUTO_SYNC_INTERVAL_MS = 20 * 60 * 1000;
 const lastHomeSync = new Map<string, number>();
 
 const DISCONNECTED_DESCRIPTIONS: Partial<Record<AuthFailureReason, string>> = {
@@ -238,6 +242,27 @@ export const useHomeData = () => {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Notes and homework only move when the manager syncs again: do it when the
+  // app comes back to the foreground, and now and then while it stays open.
+  const initializeRef = useRef(initialize);
+  initializeRef.current = initialize;
+  useEffect(() => {
+    const stale = () => {
+      const account = useAccountStore.getState().lastUsedAccount;
+      return !!account && Date.now() - (lastHomeSync.get(account) ?? 0) > AUTO_SYNC_MS;
+    };
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active" && stale()) { initializeRef.current(false); }
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === "active" && stale()) { initializeRef.current(false); }
+    }, AUTO_SYNC_INTERVAL_MS);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, []);
 
   const refresh = useCallback(() => initialize(true), [initialize]);
 

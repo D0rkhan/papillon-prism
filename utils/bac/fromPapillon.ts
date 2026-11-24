@@ -55,6 +55,7 @@ export function convertGrade(
     periodId,
     bonus: grade.bonus,
     optional: grade.optional,
+    outOf20: grade.outOf20,
     classAverage: usableScore(grade.averageScore) ? (grade.averageScore as { value: number }).value : undefined,
     kind: kindOverride ?? forceKind ?? inferKind(grade.description),
   };

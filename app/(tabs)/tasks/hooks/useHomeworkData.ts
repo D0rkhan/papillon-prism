@@ -110,6 +110,8 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
   // swipe back and forth from queueing the same request twice.
   const fetchedWeeks = useRef<Set<number>>(new Set());
   const inFlightWeeks = useRef<Set<number>>(new Set());
+  const queuedWeeks = useRef<Map<number, AccountManager>>(new Map());
+  const fetchWeekRef = useRef<(week: number, manager: AccountManager, force: boolean) => Promise<void>>(async () => {});
   const weeksRef = useRef(weeks);
   weeksRef.current = weeks;
 
@@ -136,9 +138,17 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
   const fetchWeek = useCallback(
     async (week: number, managerToUse = manager, force = false) => {
       if (!managerToUse) { return; }
-      if (inFlightWeeks.current.has(week)) { return; }
+      if (inFlightWeeks.current.has(week)) {
+        // A forced fetch (new sync, pull to refresh) must not be swallowed by a
+        // cache read still running: replay it once that one is over.
+        if (force) { queuedWeeks.current.set(week, managerToUse); }
+        return;
+      }
       if (!force && fetchedWeeks.current.has(week)) { return; }
 
+      // Before its first refresh the manager has no client and only reads the
+      // cache: the week must still be fetched for real once it is live.
+      const live = managerToUse.isLive(Capabilities.HOMEWORK);
       inFlightWeeks.current.add(week);
       try {
         const result: Homework[] = await managerToUse.getHomeworks(week);
@@ -147,7 +157,9 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
           const id = homeworkKey(hw);
           fetched[id] = { ...hw, id: hw.id ?? id };
         }
-        fetchedWeeks.current.add(week);
+        if (live) {
+          fetchedWeeks.current.add(week);
+        }
         setHomework(prev => ({ ...prev, ...fetched }));
         scheduleRefresh();
         // The manager falls back to the cache rather than throwing, so a service
@@ -160,10 +172,17 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
         setLoadError(e instanceof Error ? e : new Error(String(e)));
       } finally {
         inFlightWeeks.current.delete(week);
+        const queued = queuedWeeks.current.get(week);
+        if (queued) {
+          queuedWeeks.current.delete(week);
+          fetchWeekRef.current(week, queued, true);
+        }
       }
     },
     [manager, scheduleRefresh]
   );
+
+  fetchWeekRef.current = fetchWeek;
 
   const weeksKey = weeks.join(",");
   useEffect(() => {
@@ -172,13 +191,16 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
     }
   }, [weeksKey, fetchWeek]);
 
-  const managerRef = useRef(manager);
+  // The same manager object is published before and after each refresh: its
+  // revision says whether there is anything new to fetch.
+  const seenRevision = useRef<{ manager: AccountManager | null; revision: number }>({
+    manager,
+    revision: manager?.revision ?? -1,
+  });
   const handleManager = useCallback((updatedManager: AccountManager) => {
-    // The subscription is re-established whenever `fetchWeek` changes, and fires
-    // straight away with the manager already in hand: only an actually new
-    // manager is worth re-fetching every week for.
-    if (managerRef.current === updatedManager) { return; }
-    managerRef.current = updatedManager;
+    const seen = seenRevision.current;
+    if (seen.manager === updatedManager && seen.revision === updatedManager.revision) { return; }
+    seenRevision.current = { manager: updatedManager, revision: updatedManager.revision };
     setManager(updatedManager);
     fetchedWeeks.current.clear();
     setLoadError(null);
@@ -201,7 +223,10 @@ export const useHomeworkData = (weeks: number[], alert: any) => {
       setRefreshingWeek(week);
       allowAllAuthRetries();
       try {
-        await fetchWeek(week, manager, true);
+        const current = getManager(true) ?? manager;
+        // Every visible week, the asked one first: a refresh shows everything fresh.
+        await fetchWeek(week, current, true);
+        await Promise.all(weeksRef.current.filter(w => w !== week).map(w => fetchWeek(w, current, true)));
       } finally {
         setRefreshingWeek(null);
       }

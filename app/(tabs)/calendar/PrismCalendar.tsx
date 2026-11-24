@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getWeekNumberFromDate } from "@/database/useHomework";
 import { getCourseRouteId } from "@/database/useTimetable";
 import { Course, CourseStatus, CourseType } from "@/services/shared/timetable";
-import { accent, Aurora, Chip, GlassSurface, GText, IconButton, radius, semantic, space, useGlass, withAlpha } from "@/ui/glass";
+import { accent, ActionButton, Aurora, Chip, GlassSurface, GText, radius, semantic, space, useGlass, withAlpha } from "@/ui/glass";
 import { getSubjectColor } from "@/utils/subjects/colors";
 import { getSubjectName } from "@/utils/subjects/name";
 
@@ -255,13 +255,14 @@ export default function PrismCalendar() {
               </GText>
             </View>
             <View style={{ flexDirection: "row", gap: space.sm }}>
-              <IconButton label="Semaine précédente" onPress={() => setWeekOffset(o => o - 1)}><GText variant="title3" tone="secondary">‹</GText></IconButton>
+              <ActionButton icon="ChevronLeft" label="Semaine précédente" onPress={() => setWeekOffset(o => o - 1)} />
               {weekOffset !== 0 && (
-                <Pressable onPress={() => setWeekOffset(0)} style={[{ height: 36, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: "center", borderWidth: 1, borderColor: g.glassBorder, backgroundColor: g.glassFill }, web({ cursor: "pointer" })]}>
+                <Pressable onPress={() => setWeekOffset(0)} style={[{ height: 38, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: "center", borderWidth: 1, borderColor: g.glassBorder, backgroundColor: g.glassFill }, web({ cursor: "pointer" })]}>
                   <GText variant="caption" tone="secondary">Aujourd'hui</GText>
                 </Pressable>
               )}
-              <IconButton label="Semaine suivante" onPress={() => setWeekOffset(o => o + 1)}><GText variant="title3" tone="secondary">›</GText></IconButton>
+              <ActionButton icon="ChevronRight" label="Semaine suivante" onPress={() => setWeekOffset(o => o + 1)} />
+              <ActionButton icon="Refresh" label="Actualiser" onPress={handleRefresh} busy={manualRefreshing} />
             </View>
           </View>
 

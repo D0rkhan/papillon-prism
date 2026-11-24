@@ -111,6 +111,11 @@ export class Pronote implements SchoolServicePlugin {
     }
   }
 
+  /** Runs any PRONOTE request on a valid session (renewed and replayed once if expired). */
+  run<T>(request: (session: SessionHandle) => Promise<T>): Promise<T> {
+    return this.withSession(request);
+  }
+
   getHomeworks(weekNumber: number): Promise<Homework[]> {
     return this.withSession(session => fetchPronoteHomeworks(session, this.accountId, weekNumber));
   }

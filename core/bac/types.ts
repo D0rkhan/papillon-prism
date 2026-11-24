@@ -45,6 +45,8 @@ export interface BacGrade {
   periodId: string;
   bonus?: boolean;
   optional?: boolean;
+  /** Pronote's "Ramener sur 20" (false: weighted by its scale). */
+  outOf20?: boolean;
   /** Class average of this assessment, on the same scale as `value`. */
   classAverage?: number;
   kind?: EvalKind;

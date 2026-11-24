@@ -20,6 +20,7 @@ export const toAverageable = (grades: readonly Grade[], property: ScoreProperty 
       coefficient: grade.coefficient ?? 1,
       bonus: own ? grade.bonus : false,
       optional: own ? grade.optional : false,
+      outOf20: grade.outOf20,
     };
   });
 

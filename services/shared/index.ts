@@ -74,6 +74,18 @@ import { Kid } from "./kid";
 export class AccountManager {
   private clients: Record<string, SchoolServicePlugin> = {};
   private failures = new Map<Capabilities, ServiceFailure[]>();
+  /**
+   * Bumped after every network refresh. The same manager object is published
+   * twice (before and after its first refresh) and again on every forced
+   * refresh: screens compare revisions, not identities, to know whether what
+   * they read earlier came from the cache only.
+   */
+  revision = 0;
+
+  /** Whether at least one live client can serve this capability right now. */
+  isLive(capability: Capabilities): boolean {
+    return this.getAvailableClients(capability).length > 0;
+  }
 
   getFailures(capability: Capabilities): ServiceFailure[] {
     return this.failures.get(capability) ?? [];
@@ -232,7 +244,7 @@ export class AccountManager {
         multiple: true,
         fallback: async () => getHomeworksFromCache(weekNumber),
         saveToCache: async (data: Homework[]) => {
-          await addHomeworkToDatabase(data);
+          await addHomeworkToDatabase(data, weekNumber);
         },
       }
     );
@@ -863,6 +875,7 @@ export const initializeAccountManager = async (
     }
 
     await manager.refreshAllAccounts(options);
+    manager.revision++;
     // A newer initialization for another account may have taken over while this
     // one was refreshing; publishing now would hand screens the stale account.
     if (globalManager === manager) {

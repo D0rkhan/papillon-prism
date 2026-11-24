@@ -1,7 +1,7 @@
 import { Papicons } from '@getpapillon/papicons';
 import { useTheme, useHeaderHeight } from "expo-router/react-navigation";
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRouter } from "expo-router";
+import { Redirect, useNavigation, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { t } from "i18next";
 import { BusIcon, HeartIcon, InfoIcon } from "lucide-react-native";
@@ -31,7 +31,12 @@ import Typography from '@/ui/new/Typography';
 import SafeHorizontalView from "@/ui/components/SafeHorizontalView";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function SettingsIndex() {
+/** Prism replaced this page with its own, much shorter one. */
+export default function SettingsRedirect() {
+  return <Redirect href="/(features)/prism/reglages" />;
+}
+
+export function LegacySettingsIndex() {
   const router = useRouter();
   const navigation = useNavigation();
 

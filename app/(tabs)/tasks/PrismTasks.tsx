@@ -1,13 +1,12 @@
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Platform, Pressable, RefreshControl, ScrollView, View, ViewStyle } from "react-native";
+import { Platform, Pressable, View, ViewStyle } from "react-native";
 import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getHomeworkRouteId, getWeekNumberFromDate } from "@/database/useHomework";
 import type { Homework } from "@/services/shared/homework";
 import { useAlert } from "@/ui/components/AlertProvider";
-import { accent, Aurora, Chip, GlassSurface, GText, IconButton, radius, semantic, space, useGlass } from "@/ui/glass";
+import { accent, ActionButton, aurora, Card, Chip, EmptyState, GText, PrismScreen, radius, Segmented, semantic, space, StatusNote, useGlass } from "@/ui/glass";
 import { getSubjectColor } from "@/utils/subjects/colors";
 import { getSubjectName } from "@/utils/subjects/name";
 
@@ -80,6 +79,14 @@ function TaskRow({ item, onToggle, onOpen }: { item: Homework; onToggle: () => v
             {item.attachments.length > 0 && <Chip label={`${item.attachments.length} pièce${item.attachments.length > 1 ? "s" : ""} jointe${item.attachments.length > 1 ? "s" : ""}`} color={g.textSecondary} />}
           </View>
           <GText variant="callout" tone="secondary" numberOfLines={4}>{content || "Pas de consigne."}</GText>
+          {(item.length || item.difficulty || item.canUpload || item.uploadedFile || item.themes?.length) ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs, marginTop: 2 }}>
+              {item.length ? <Chip label={`≈ ${item.length >= 60 ? `${Math.floor(item.length / 60)} h ${String(item.length % 60).padStart(2, "0")}` : `${item.length} min`}`} color={g.textSecondary} /> : null}
+              {item.difficulty ? <Chip label={["", "Facile", "Moyen", "Difficile"][item.difficulty] ?? "Difficulté"} color={[g.textSecondary, semantic.success, semantic.warning, semantic.danger][item.difficulty] ?? g.textSecondary} /> : null}
+              {item.uploadedFile ? <Chip label="Rendu en ligne ✓" color={semantic.success} /> : item.canUpload ? <Chip label="À rendre en ligne" color={aurora.cyan} /> : null}
+              {item.themes?.slice(0, 2).map(t => <Chip key={t} label={t} color={g.textTertiary} />)}
+            </View>
+          ) : null}
         </Pressable>
       </View>
     </Reanimated.View>
@@ -89,7 +96,6 @@ function TaskRow({ item, onToggle, onOpen }: { item: Homework; onToggle: () => v
 export default function PrismTasks() {
   const g = useGlass();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const alert = useAlert();
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -102,7 +108,7 @@ export default function PrismTasks() {
   }, [weekOffset]);
   const week = getWeekNumberFromDate(new Date(monday.getTime() + 2 * 86400000));
   const weeks = useMemo(() => [week - 1, week, week + 1], [week]);
-  const { homeworkByWeek, refreshingWeek, handleRefresh, setAsDone } = useHomeworkData(weeks, alert);
+  const { homeworkByWeek, refreshingWeek, handleRefresh, setAsDone, error, failures } = useHomeworkData(weeks, alert);
 
   const sunday = new Date(monday.getTime() + 6 * 86400000);
   const items = useMemo(() => {
@@ -135,58 +141,61 @@ export default function PrismTasks() {
   const range = `${monday.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${sunday.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
   const weekLabel = weekOffset === 0 ? "Cette semaine" : weekOffset === 1 ? "Semaine prochaine" : weekOffset === -1 ? "Semaine dernière" : `Semaine ${week}`;
 
-  return (
-    <View style={{ flex: 1, backgroundColor: g.background }}>
-      <Aurora />
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshingWeek !== null} onRefresh={() => handleRefresh(week)} tintColor={g.textSecondary} />}
-        contentContainerStyle={{ paddingTop: insets.top + (Platform.OS === "web" ? 84 : space.xl), paddingBottom: insets.bottom + 110, paddingHorizontal: space.xl }}
-      >
-        <View style={{ width: "100%", maxWidth: 860, alignSelf: "center", gap: space.xl }}>
-          <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: space.md }}>
-            <View style={{ flex: 1 }}>
-              <GText variant="overline" tone="tertiary">{range}</GText>
-              <GText variant="title1">{weekLabel}</GText>
-            </View>
-            <View style={{ flexDirection: "row", gap: space.sm }}>
-              <IconButton label="Semaine précédente" onPress={() => setWeekOffset(o => o - 1)}><GText variant="title3" tone="secondary">‹</GText></IconButton>
-              {weekOffset !== 0 && (
-                <Pressable onPress={() => setWeekOffset(0)} style={[{ height: 36, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: "center", borderWidth: 1, borderColor: g.glassBorder, backgroundColor: g.glassFill }, web({ cursor: "pointer" })]}>
-                  <GText variant="caption" tone="secondary">Aujourd'hui</GText>
-                </Pressable>
-              )}
-              <IconButton label="Semaine suivante" onPress={() => setWeekOffset(o => o + 1)}><GText variant="title3" tone="secondary">›</GText></IconButton>
-              <IconButton label="Nouvelle tâche" onPress={() => router.push("/(modals)/tasks/custom")}><GText variant="title3" tone="secondary">+</GText></IconButton>
-            </View>
-          </View>
+  const evaluations = items.filter(h => h.evaluation).length;
+  const todo = items.length - done;
 
-          <GlassSurface padding={space.xl} radius={18}>
+  return (
+    <PrismScreen
+      title={weekLabel}
+      overline={range}
+      maxWidth={860}
+      onRefresh={() => handleRefresh(week)}
+      refreshing={refreshingWeek !== null}
+      actions={
+        <>
+          <ActionButton icon="ChevronLeft" label="Semaine précédente" onPress={() => setWeekOffset(o => o - 1)} />
+          {weekOffset !== 0 && (
+            <Pressable onPress={() => setWeekOffset(0)} style={[{ height: 38, paddingHorizontal: space.md, borderRadius: radius.pill, justifyContent: "center", borderWidth: 1, borderColor: g.glassBorder, backgroundColor: g.glassFill }, web({ cursor: "pointer" })]}>
+              <GText variant="caption" tone="secondary">Aujourd'hui</GText>
+            </Pressable>
+          )}
+          <ActionButton icon="ChevronRight" label="Semaine suivante" onPress={() => setWeekOffset(o => o + 1)} />
+          <ActionButton icon="Plus" label="Nouvelle tâche" onPress={() => router.push("/(modals)/tasks/custom")} />
+        </>
+      }
+    >
+          <Card>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.lg, flexWrap: "wrap" }}>
               <View>
                 <GText variant="overline" tone="tertiary">Progression</GText>
                 <GText variant="title2">{items.length ? `${done} sur ${items.length} terminé${done > 1 ? "s" : ""}` : "Rien de prévu"}</GText>
               </View>
-              <View style={{ flexDirection: "row", gap: space.xs }}>
-                {([["todo", "À faire"], ["evaluations", "Évaluations"], ["all", "Tout"]] as [Filter, string][]).map(([k, label]) => (
-                  <Chip key={k} label={label} color={filter === k ? g.text : g.textTertiary} onPress={() => setFilter(k)} />
-                ))}
-              </View>
+              <Segmented
+                options={[
+                  { value: "todo", label: "À faire", badge: todo || undefined },
+                  { value: "evaluations", label: "Évaluations", badge: evaluations || undefined },
+                  { value: "all", label: "Tout" },
+                ]}
+                value={filter}
+                onChange={v => setFilter(v as Filter)}
+              />
             </View>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: g.separator, marginTop: space.lg }}>
-              <View style={{ width: `${items.length ? (done / items.length) * 100 : 0}%`, height: 4, borderRadius: 2, backgroundColor: semantic.success }} />
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: g.separator, marginTop: space.lg, overflow: "hidden" }}>
+              <View style={[{ width: `${items.length ? (done / items.length) * 100 : 0}%`, height: 4, borderRadius: 2, backgroundColor: semantic.success }, web({ transition: "width 400ms ease" })]} />
             </View>
-          </GlassSurface>
+          </Card>
+
+          {(error || failures.length > 0) && <StatusNote tone="warning" text="Certains devoirs n'ont pas pu être mis à jour : ce qui s'affiche vient du dernier enregistrement." />}
 
           {groups.length === 0 ? (
-            <GlassSurface padding={space.xxl} radius={18} style={{ alignItems: "center" }}>
-              <GText variant="title3">{filter === "todo" && items.length ? "Tout est fait" : "Aucun devoir"}</GText>
-              <GText variant="callout" tone="tertiary" align="center">
-                {filter === "todo" && items.length ? "Rien d'autre à rendre cette semaine." : "Aucun devoir enregistré pour cette semaine. Tire vers le bas pour actualiser."}
-              </GText>
-            </GlassSurface>
+            filter === "todo" && items.length ? (
+              <EmptyState icon="Check" title="Tout est fait" message="Rien d'autre à rendre cette semaine." />
+            ) : (
+              <EmptyState icon="Tasks" title="Aucun devoir" message="Aucun devoir enregistré pour cette semaine." action="Actualiser" onAction={() => handleRefresh(week)} />
+            )
           ) : (
             groups.map(([ts, list]) => (
-              <GlassSurface key={ts} padding={space.xl} radius={18}>
+              <Card key={ts}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: space.xs }}>
                   <GText variant="overline" tone="secondary">{dayTitle(ts)}</GText>
                   <GText variant="caption" tone="tertiary">{list.length} devoir{list.length > 1 ? "s" : ""}</GText>
@@ -199,11 +208,9 @@ export default function PrismTasks() {
                     onOpen={() => router.push({ pathname: "/(tabs)/tasks/[id]", params: { id: getHomeworkRouteId(h) } })}
                   />
                 ))}
-              </GlassSurface>
+              </Card>
             ))
           )}
-        </View>
-      </ScrollView>
-    </View>
+    </PrismScreen>
   );
 }

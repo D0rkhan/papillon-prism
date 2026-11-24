@@ -77,6 +77,10 @@ function TabLayoutContent() {
         <NativeTabs.Trigger.Label hidden={labelsHidden}>{t("Tab_Grades")}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon src={IS_IOS_WITH_PADDING ? require('@/assets/icons/pie_padding.png') : require('@/assets/icons/pie.png')} renderingMode='template' />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="plus">
+        <NativeTabs.Trigger.Label hidden={labelsHidden}>Plus</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon src={require('@/assets/icons/more.png')} renderingMode='template' />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

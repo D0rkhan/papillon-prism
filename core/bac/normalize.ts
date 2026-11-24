@@ -2,8 +2,10 @@
  * Exact averaging rules (replaces the approximations of utils/grades/algorithms).
  *
  * - Every grade is brought back to /20, so a 5/10 weighs exactly as much as a 10/20
- *   ("normalized" mode, Pronote's default "notes ramenées sur 20").
- *   The "points" mode weighs each grade by its scale instead (Σ points / Σ barèmes).
+ *   (Pronote's "Ramener sur 20", ticked per assessment by the teacher).
+ *   A grade whose teacher left it unticked (`outOf20: false`) weighs by its scale
+ *   instead, exactly like Pronote: Σ(coef × note) / Σ(coef × barème) × 20.
+ *   The "points" mode applies that to every grade.
  * - Optional grades ("facultatives") only count if they raise the average. The subset
  *   kept is the optimal one: greedily add them from best to worst while each one is
  *   above the running average (a weighted mean only grows when you add a value above it).
@@ -20,6 +22,8 @@ export interface AverageableGrade {
   coefficient: number;
   bonus?: boolean;
   optional?: boolean;
+  /** Pronote's "Ramener sur 20". `false` = counted with its own scale; default true. */
+  outOf20?: boolean;
 }
 
 export const toTwenty = (value: number, outOf: number): number => (value / outOf) * 20;
@@ -32,7 +36,7 @@ const isCountable = (g: AverageableGrade): g is AverageableGrade & { value: numb
   g.coefficient > 0;
 
 const weightOf = (g: AverageableGrade, mode: AveragingMode): number =>
-  mode === "points" ? (g.coefficient * g.outOf) / 20 : g.coefficient;
+  mode === "points" || g.outOf20 === false ? (g.coefficient * g.outOf) / 20 : g.coefficient;
 
 export interface AverageBreakdown {
   /** Average /20, capped at 20. `null` when nothing counts. */

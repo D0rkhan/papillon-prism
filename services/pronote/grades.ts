@@ -91,6 +91,8 @@ function mapSubjectGrades(grades: GradesOverview, accountId: string): Subject[] 
     } : undefined,
     bonus: g.isBonus ?? false,
     optional: g.isOptional ?? false,
+    outOf20: g.isOutOf20 ?? true,
+    gradeComment: g.commentaireSurNote || undefined,
     outOf: mapGradeValueToScore(g.outOf),
     coefficient: g.coefficient,
     studentScore: mapGradeValueToScore(g.value),

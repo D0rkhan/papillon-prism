@@ -13,6 +13,22 @@ const ORIGIN = "prism://app";
 // Debug / tests: run on a separate profile (PRISM_USER_DATA=/path) without touching the real one.
 if (process.env.PRISM_USER_DATA) { app.setPath("userData", process.env.PRISM_USER_DATA); }
 
+// One window only. PRONOTE tokens are single-use: two instances on the same profile
+// would both log in with the same stored token, one would be rejected
+// (BadCredentialsError) and could write the spent token back, losing the account.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+  process.exit(0);
+}
+app.on("second-instance", () => {
+  const [win] = BrowserWindow.getAllWindows();
+  if (win) {
+    if (win.isMinimized()) { win.restore(); }
+    win.show();
+    win.focus();
+  }
+});
+
 protocol.registerSchemesAsPrivileged([
   { scheme: "prism", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);

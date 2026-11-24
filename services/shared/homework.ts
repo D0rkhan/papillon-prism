@@ -28,6 +28,15 @@ export interface Homework extends GenericInterface{
   custom: boolean;
   progress?: number;
 	ref?: Assignment;
+  /** PRONOTE: 1 easy · 2 medium · 3 hard (0/undefined: not set). */
+  difficulty?: number;
+  /** PRONOTE: expected working time, in minutes. */
+  length?: number;
+  themes?: string[];
+  /** PRONOTE: the student can hand it in online. */
+  canUpload?: boolean;
+  /** PRONOTE: name of the file already handed in. */
+  uploadedFile?: string;
 }
 
 export enum ReturnFormat {

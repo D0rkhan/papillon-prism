@@ -240,6 +240,8 @@ function RootNavigatorContent() {
           }}
         />
 
+        <Stack.Screen name="(features)/prism" options={{ headerShown: false, presentation: "card" }} />
+
         <Stack.Screen
           name="(features)/attendance"
           options={{

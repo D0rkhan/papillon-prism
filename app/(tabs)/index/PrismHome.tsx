@@ -1,25 +1,27 @@
-import { Papicons } from "@getpapillon/papicons";
 import { useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { Platform, Pressable, RefreshControl, ScrollView, StatusBar, useWindowDimensions, View, ViewStyle } from "react-native";
 import Reanimated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { overallAverage, subjectAverage } from "@/core/bac/normalize";
 import { getWeekNumberFromDate } from "@/database/useHomework";
 import { useBacAnalysis } from "@/hooks/useBacAnalysis";
-import type { Grade } from "@/services/shared/grade";
+import { useHasPronote } from "@/hooks/usePronoteExtra";
+import type { Grade, Subject } from "@/services/shared/grade";
 import type { Homework } from "@/services/shared/homework";
 import { Course, CourseStatus } from "@/services/shared/timetable";
 import { useAlert } from "@/ui/components/AlertProvider";
 import {
   accent,
+  ActionButton,
   Aurora,
+  aurora,
   Chip,
   GlassSurface,
   gradeColor,
   GText,
-  IconButton,
+  Icon,
+  type IconName,
   probabilityColor,
   ProbabilityRing,
   SectionHeader,
@@ -29,7 +31,7 @@ import {
   useGlass,
   withAlpha,
 } from "@/ui/glass";
-import { toAverageable } from "@/utils/grades/algorithms/helpers";
+import { periodOverallAverage } from "@/utils/grades/average";
 import { getSubjectColor } from "@/utils/subjects/colors";
 import { getSubjectName } from "@/utils/subjects/name";
 
@@ -48,6 +50,43 @@ function dayLabel(date: Date): string {
   if (sameDay(date, today)) { return "Aujourd'hui"; }
   if (sameDay(date, tomorrow)) { return "Demain"; }
   return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function shortDay(date: Date): string {
+  const today = new Date();
+  if (sameDay(date, today)) { return "Auj."; }
+  if (sameDay(date, new Date(today.getTime() + 86400000))) { return "Demain"; }
+  return date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
+}
+
+function QuickLink({ icon, label, color, onPress }: { icon: IconName; label: string; color: string; onPress: () => void }) {
+  const g = useGlass();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={state => [
+        {
+          flex: 1,
+          minWidth: 130,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.sm,
+          paddingVertical: space.md,
+          paddingHorizontal: space.md,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: g.glassBorder,
+          backgroundColor: (state as { hovered?: boolean }).hovered || state.pressed ? g.glassFillStrong : g.glassFill,
+        },
+        web({ cursor: "pointer", transition: "background-color 160ms" }),
+      ]}
+    >
+      <View style={{ width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: withAlpha(color, 0.16) }}>
+        <Icon name={icon} size={16} color={color} />
+      </View>
+      <GText variant="callout" numberOfLines={1}>{label}</GText>
+    </Pressable>
+  );
 }
 
 function greeting(): string {
@@ -137,6 +176,7 @@ export interface PrismHomeProps {
   onRefresh: () => void;
   upcomingDays: UpcomingCourseDay[];
   grades: Grade[];
+  subjects: Subject[];
   history: { date: Date; average: number }[];
   studentAverage?: number;
   classAverage?: number;
@@ -167,15 +207,15 @@ export default function PrismHome(props: PrismHomeProps) {
   }, [homeworkByWeek]);
 
   const { analysis } = useBacAnalysis({ lite: true });
+  const hasPronote = useHasPronote();
   const day = props.upcomingDays[0];
   const recent = props.grades.slice(0, 5);
   // Official average when the school publishes it, otherwise Prism's exact computation.
-  const computed = useMemo(() => {
-    const bySubject = new Map<string, Grade[]>();
-    for (const gr of props.grades) { bySubject.set(gr.subjectId, [...(bySubject.get(gr.subjectId) ?? []), gr]); }
-    return overallAverage([...bySubject.values()].map(list => ({ average: subjectAverage(toAverageable(list)) })));
-  }, [props.grades]);
-  const average = props.studentAverage ?? computed ?? undefined;
+  const overall = useMemo(
+    () => periodOverallAverage(props.subjects, props.studentAverage !== undefined ? { value: props.studentAverage } : null),
+    [props.subjects, props.studentAverage]
+  );
+  const average = overall.value ?? undefined;
   const sparkValues = props.history.map(h => h.average);
 
   const col = (children: React.ReactNode) => <View style={{ flex: 1, gap: space.lg, minWidth: 0 }}>{children}</View>;
@@ -197,8 +237,8 @@ export default function PrismHome(props: PrismHomeProps) {
       {homework.length ? (
         homework.map((h: Homework) => (
           <View key={h.id ?? h.content} style={{ flexDirection: "row", gap: space.md, paddingVertical: space.sm }}>
-            <View style={{ width: 52 }}>
-              <GText variant="caption" tone="secondary">{dayLabel(new Date(h.dueDate)).replace("Aujourd'hui", "Auj.")}</GText>
+            <View style={{ width: 58 }}>
+              <GText variant="caption" tone="secondary" numberOfLines={1}>{shortDay(new Date(h.dueDate))}</GText>
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
@@ -227,7 +267,7 @@ export default function PrismHome(props: PrismHomeProps) {
             <GText variant="body" tone="tertiary">/20</GText>
           </View>
           <GText variant="caption" tone="tertiary">
-            {props.studentAverage !== undefined ? "Pronote" : computed !== null ? "Calculée par Prism" : ""}
+            {overall.source === "pronote" ? "Pronote" : overall.source === "computed" ? "Calculée par Prism" : ""}
             {props.classAverage !== undefined ? ` · classe ${fmt(props.classAverage, 2)}` : ""}
           </GText>
         </View>
@@ -286,14 +326,19 @@ export default function PrismHome(props: PrismHomeProps) {
               </View>
             </View>
             <View style={{ flexDirection: "row", gap: space.sm }}>
-              <IconButton label="Actualiser" onPress={props.onRefresh}>
-                <GText variant="title3" tone="secondary">↻</GText>
-              </IconButton>
-              <IconButton label="Paramètres" onPress={() => router.navigate("/(settings)/settings")}>
-                <Papicons name="Gears" width={18} height={18} fill={g.textSecondary} color={g.textSecondary} />
-              </IconButton>
+              <ActionButton icon="Refresh" label="Actualiser" onPress={props.onRefresh} busy={props.refreshing || props.syncing} />
+              <ActionButton icon="Gears" label="Réglages" onPress={() => router.navigate("/(features)/prism/reglages")} />
             </View>
           </View>
+
+          {hasPronote && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+              <QuickLink icon="Paper" label="Bulletins" color={aurora.violet} onPress={() => router.push("/(features)/prism/bulletin")} />
+              <QuickLink icon="Bookmark" label="Cahier de textes" color={aurora.cyan} onPress={() => router.push("/(features)/prism/cahier")} />
+              <QuickLink icon="Clock" label="Vie scolaire" color={aurora.pink} onPress={() => router.push("/(features)/prism/vie-scolaire")} />
+              <QuickLink icon="Mail" label="Messagerie" color={aurora.indigo} onPress={() => router.push("/(features)/prism/messagerie")} />
+            </View>
+          )}
 
           {wide ? (
             <View style={{ flexDirection: "row", gap: space.lg, alignItems: "flex-start" }}>

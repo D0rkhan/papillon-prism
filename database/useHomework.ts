@@ -144,108 +144,95 @@ export async function getHomeworksFromCache(
   }
 }
 
-export async function addHomeworkToDatabase(homeworks: SharedHomework[]) {
+/**
+ * Mirrors one week of service homework into the database.
+ *
+ * `weekNumber` is the week that was asked for: when the service answers with
+ * nothing, the week is still known, so homework removed by a teacher is swept
+ * away instead of lingering forever. Every write (deletions included, which
+ * WatermelonDB refuses outside a writer) happens in one transaction.
+ */
+export async function addHomeworkToDatabase(homeworks: SharedHomework[], weekNumber?: number) {
+  const week = weekNumber ?? (homeworks[0] ? getWeekNumberFromDate(homeworks[0].dueDate) : undefined);
+  if (week === undefined) {
+    return;
+  }
+
   const db = getDatabaseInstance();
+  const { start, end } = getDateRangeOfWeek(week);
+  const collection = db.get<Homework>("homework");
 
-  const weekNumber = getWeekNumberFromDate(homeworks[0].dueDate);
-  const { start, end } = getDateRangeOfWeek(weekNumber);
-  const dbHomeworks = await db.get<Homework>("homework")
-    .query(Q.where("dueDate", Q.between(start.getTime(), end.getTime())))
-    .fetch();
+  await safeWrite(
+    db,
+    async () => {
+      const dbHomeworks = await collection
+        .query(Q.where("dueDate", Q.between(start.getTime(), end.getTime())))
+        .fetch();
 
-  const homeworkIds: string[] = [];
-  const refreshedServiceIds = new Set(
-    homeworks.map(homework => homework.createdByAccount)
+      const freshIds = new Set(homeworks.map(hw => getHomeworkRouteId(hw)));
+      // Only the services that answered are swept: another service's homework
+      // (or a custom task) in the same week is none of this response's business.
+      const refreshedServiceIds = new Set(homeworks.map(hw => hw.createdByAccount));
+      if (homeworks.length === 0) {
+        for (const record of dbHomeworks) {
+          if (!record.custom) { refreshedServiceIds.add(record.createdByAccount); }
+        }
+      }
+
+      const operations: Model[] = [];
+      const byId = new Map<string, Homework>();
+      for (const record of dbHomeworks) {
+        const stale =
+          !record.custom &&
+          refreshedServiceIds.has(record.createdByAccount) &&
+          !freshIds.has(record.homeworkId);
+        if (stale) {
+          operations.push(record.prepareDestroyPermanently());
+        } else {
+          byId.set(record.homeworkId, record);
+        }
+      }
+
+      const seen = new Set<string>();
+      for (const hw of homeworks) {
+        const id = getHomeworkRouteId(hw);
+        // The same task listed twice would be created twice.
+        if (seen.has(id)) { continue; }
+        seen.add(id);
+        const fields = {
+          subject: hw.subject,
+          content: hw.content,
+          dueDate: hw.dueDate.getTime(),
+          isDone: hw.isDone,
+          returnFormat: hw.returnFormat,
+          attachments: JSON.stringify(hw.attachments),
+          evaluation: hw.evaluation,
+          custom: hw.custom,
+          createdByAccount: hw.createdByAccount,
+          kidName: hw.kidName,
+          fromCache: true,
+        };
+
+        let existing = byId.get(id);
+        if (!existing) {
+          // Due date moved to another week: the record is outside the range above.
+          existing = (await collection.query(Q.where("homeworkId", id)).fetch())[0];
+        }
+
+        if (existing) {
+          operations.push(existing.prepareUpdate(record => { Object.assign(record, fields); }));
+        } else {
+          operations.push(collection.prepareCreate(record => { Object.assign(record, { homeworkId: id, ...fields }); }));
+        }
+      }
+
+      if (operations.length > 0) {
+        await db.batch(operations);
+      }
+    },
+    10000,
+    "addHomeworkToDatabase"
   );
-  for (const hw of homeworks) {
-    const oldId = generateId(hw.subject + hw.content + hw.createdByAccount);
-    const id = getHomeworkRouteId(hw);
-
-    homeworkIds.push(oldId, id);
-  }
-
-  // Custom tasks never come back from a service, so a refresh must not sweep
-  // them away as stale.
-  const homeworksToDelete = dbHomeworks.filter(
-    dbHomework =>
-      !dbHomework.custom &&
-      refreshedServiceIds.has(dbHomework.createdByAccount) &&
-      !homeworkIds.includes(dbHomework.homeworkId)
-  );
-
-  for (const homework of homeworksToDelete) {
-    await homework.markAsDeleted();
-  }
-
-  for (const hw of homeworks) {
-    const oldId = generateId(hw.subject + hw.content + hw.createdByAccount);
-    const id = getHomeworkRouteId(hw);
-
-    const existing = await db
-      .get("homework")
-      .query(Q.where("homeworkId", id))
-      .fetch();
-    const oldExisting = await db
-      .get("homework")
-      .query(Q.where("homeworkId", oldId))
-      .fetch();
-
-    for (const oldRecord of oldExisting) {
-      await oldRecord.markAsDeleted();
-    }
-
-    if (existing.length === 0) {
-      await safeWrite(
-        db,
-        async () => {
-          await db.get("homework").create((record: Model) => {
-            const homework = record as Homework;
-            Object.assign(homework, {
-              homeworkId: id,
-              subject: hw.subject,
-              content: hw.content,
-              dueDate: hw.dueDate.getTime(),
-              isDone: hw.isDone,
-              returnFormat: hw.returnFormat,
-              attachments: JSON.stringify(hw.attachments),
-              evaluation: hw.evaluation,
-              custom: hw.custom,
-              createdByAccount: hw.createdByAccount,
-              kidName: hw.kidName,
-              fromCache: true,
-            });
-          });
-        },
-        10000,
-        "addHomeworkToDatabase"
-      );
-    } else {
-      const recordToUpdate = existing[0];
-      await safeWrite(
-        db,
-        async () => {
-          await recordToUpdate.update((record: Model) => {
-            const homework = record as Homework;
-            Object.assign(homework, {
-              subject: hw.subject,
-              content: hw.content,
-              dueDate: hw.dueDate.getTime(),
-              isDone: hw.isDone,
-              returnFormat: hw.returnFormat,
-              attachments: JSON.stringify(hw.attachments),
-              evaluation: hw.evaluation,
-              custom: hw.custom,
-              createdByAccount: hw.createdByAccount,
-              kidName: hw.kidName,
-              fromCache: true,
-            });
-          });
-        },
-        10000,
-        "updateHomeworkToDatabase"
-      );
-    }
-  }
 }
 
 /**

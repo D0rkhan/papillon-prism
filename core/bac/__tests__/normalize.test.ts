@@ -70,3 +70,28 @@ describe("overallAverage / median", () => {
     expect(medianOn20([g(8), g(12)])).toBeCloseTo(10, 10);
   });
 });
+
+describe("Pronote « Ramener sur 20 » par devoir", () => {
+  const n = (value: number, outOf: number, coefficient = 1, outOf20 = true) => ({ value, outOf, coefficient, outOf20 });
+
+  it("ramène sur 20 par défaut (8/10 pèse comme 16/20)", () => {
+    expect(subjectAverage([n(8, 10), n(12, 20)])).toBeCloseTo(14, 10);
+  });
+
+  it("compte en points un devoir non ramené : Σ notes / Σ barèmes × 20", () => {
+    // (8 + 12) / (10 + 20) × 20 = 13,33
+    expect(subjectAverage([n(8, 10, 1, false), n(12, 20, 1, false)])).toBeCloseTo(40 / 3, 10);
+  });
+
+  it("mélange les deux comme Pronote (le ramené vaut barème 20)", () => {
+    // 8/10 non ramené (coef 2) + 15/20 ramené (coef 1) → (2×8 + 15) / (2×10 + 20) × 20 = 15,5
+    expect(subjectAverage([n(8, 10, 2, false), n(15, 20, 1, true)])).toBeCloseTo(15.5, 10);
+  });
+
+  it("bonus non ramené : seuls les points au-dessus de la moitié du barème comptent", () => {
+    // base 12/20 ; bonus 8/10 non ramené coef 1 → +3 points sur un poids de 1 → 15
+    const avg = subjectAverage([n(12, 20), { ...n(8, 10, 1, false), bonus: true }]);
+    expect(avg).toBeCloseTo(12 + (8 - 5) / 1, 10);
+  });
+});
+

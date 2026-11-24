@@ -40,6 +40,11 @@ export async function fetchPronoteHomeworks(session: SessionHandle, accountId: s
         evaluation: false,
         custom: false,
         createdByAccount: accountId,
+        difficulty: homework.difficulty || undefined,
+        length: homework.length || undefined,
+        themes: homework.themes?.map(theme => theme.name).filter(Boolean),
+        canUpload: homework.return.canUpload,
+        uploadedFile: homework.return.uploaded?.name,
       });
     }
   }

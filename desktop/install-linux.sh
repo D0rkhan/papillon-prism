@@ -8,6 +8,12 @@ if [[ -z "${APPIMAGE}" ]]; then
   echo "Aucune AppImage dans desktop/out : lance d'abord « npm run dist » dans desktop/." >&2
   exit 1
 fi
+# A running copy would keep using (and could write back) the old PRONOTE token.
+if pgrep -f "papillon-prism.AppImage" >/dev/null 2>&1; then
+  echo "Fermeture de Papillon Prism en cours d'exécution…"
+  pkill -f "papillon-prism.AppImage" || true
+  sleep 1
+fi
 install -Dm755 "${APPIMAGE}" "${HOME}/.local/bin/papillon-prism.AppImage"
 install -Dm644 icon.png "${HOME}/.local/share/icons/hicolor/512x512/apps/papillon-prism.png"
 install -Dm644 /dev/stdin "${HOME}/.local/share/applications/papillon-prism.desktop" <<DESKTOP

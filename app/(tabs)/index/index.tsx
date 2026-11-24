@@ -113,19 +113,19 @@ const HomeScreen = () => {
   const timetableTitle = useTimetableWidgetTitle(courses);
 
   const { currentPeriod, grades: gradesData } = useDisplayPeriod();
-  const { grades, history, averages, refresh: refreshGrades } = gradesData;
+  const { grades, subjects, history, averages } = gradesData;
 
   const [refreshing, setRefreshing] = React.useState(false);
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
+      // A forced sync publishes a new manager revision: grades, periods and
+      // homework hooks all re-fetch from it on their own.
       await refresh();
-      // The grades widget keeps its own cache, the timetable reads the database.
-      await refreshGrades();
     } finally {
       setRefreshing(false);
     }
-  }, [refresh, refreshGrades]);
+  }, [refresh]);
   const gradesWidgetHidden = grades.length === 0;
 
   const renderTimeTable = React.useCallback(() => <HomeTimeTableWidget courses={courses} />, [courses]);
@@ -166,6 +166,7 @@ const HomeScreen = () => {
         onRefresh={handleRefresh}
         upcomingDays={upcomingDays}
         grades={grades}
+        subjects={subjects}
         history={history.subject ?? []}
         studentAverage={averages.student?.value}
         classAverage={averages.class?.value}
