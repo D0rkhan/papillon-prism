@@ -20,7 +20,7 @@ export default function ChangelogScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <Image
-        source={require("../assets/images/icon.png")}
+        source={require("../assets/images/prism-icon.png")}
         style={{ width: 72, height: 72, alignSelf: "center", borderRadius: 20, marginBottom: 8 }}
       />
       <Typography variant="h3" align="center">

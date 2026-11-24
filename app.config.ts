@@ -9,7 +9,7 @@ export default {
     slug: "papillon-prism",
     version: PackageJSON.version,
     orientation: "default",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/prism-icon.png",
     scheme: ["papillonprism", "izly", "skoapp-prod"],
     platforms: ["ios", "android", "web"],
     userInterfaceStyle: "automatic",
@@ -92,9 +92,10 @@ export default {
         "android.permission.READ_MEDIA_VIDEO",
       ],
       adaptiveIcon: {
-        foregroundImage: "./assets/images/adaptive-icon.png",
-        backgroundColor: "#ffffff",
-        monochromeImage: "./assets/images/monochrome-icon.png",
+        foregroundImage: "./assets/images/prism-adaptive-foreground.png",
+        backgroundImage: "./assets/images/prism-adaptive-background.png",
+        backgroundColor: "#07070C",
+        monochromeImage: "./assets/images/prism-monochrome.png",
       },
       supportsTablet: true,
       predictiveBackGestureEnabled: false,
@@ -122,8 +123,10 @@ export default {
         "expo-splash-screen",
         {
           backgroundColor: "#07070C",
-          image: "./assets/images/logotype.png",
-          imageWidth: 240,
+          // Square, logo inside the centre circle: Android 12+ crops the splash
+          // icon to a circle, which cut the old wide logotype on the S22.
+          image: "./assets/images/prism-splash-icon.png",
+          imageWidth: 200,
         },
       ],
       [

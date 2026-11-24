@@ -24,7 +24,7 @@ export function getServiceName(service: Services): string {
 export function getServiceLogo(service: Services): ImageSourcePropType {
   switch(service) {
   case Services.MOCK_DATA:
-    return require("@/assets/images/icon.png")
+    return require("@/assets/images/prism-icon.png")
   case Services.PRONOTE:
     return require("@/assets/images/service_pronote.png")
   case Services.SKOLENGO:

@@ -79,7 +79,7 @@ export default function ServiceSelection() {
             gap={8}
           >
             <Image
-              source={require("@/assets/images/icon.png")}
+              source={require("@/assets/images/prism-icon.png")}
               style={{ width: 86, height: 86, borderRadius: 24 }}
             />
             <Divider height={8} ghost />

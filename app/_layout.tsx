@@ -38,11 +38,18 @@ LogBox.ignoreLogs([
   "cannot calculate shadow efficiently",
 ]);
 
+// Without an account, the welcome screen hides the splash when its transition ends.
+// That event does not always fire (Android, a replace before the stack is ready), so
+// the splash goes away on its own after this delay: never stuck on the launch screen.
+const SPLASH_FALLBACK_MS = 1200;
+
 // From onLayout, not an effect: hiding earlier shows a blank frame.
-const hideSplashIfSignedIn = () => {
+const hideSplashOnLayout = () => {
   if (useAccountStore.getState().accounts.length > 0) {
-    SplashScreen.hideAsync();
+    SplashScreen.hideAsync().catch(() => {});
+    return;
   }
+  setTimeout(() => SplashScreen.hideAsync().catch(() => {}), SPLASH_FALLBACK_MS);
 };
 
 export default function RootLayout() {
@@ -115,7 +122,7 @@ export default function RootLayout() {
 
   return (
     <AppProviders>
-      <View style={{ flex: 1 }} onLayout={hideSplashIfSignedIn}>
+      <View style={{ flex: 1 }} onLayout={hideSplashOnLayout}>
         <RootNavigator />
       </View>
     </AppProviders>

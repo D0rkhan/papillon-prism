@@ -35,7 +35,7 @@ export function GetSupportedServices(redirect: (path: { pathname: string, option
       name: "mock-data",
       title: "Mock Data",
       type: ["school", "univ"],
-      image: require("@/assets/images/icon.png"),
+      image: require("@/assets/images/prism-icon.png"),
       onPress: openMockDataAccountChooser,
       variant: 'service' as const,
       color: 'light' as const,
@@ -110,7 +110,7 @@ export function GetSupportedServices(redirect: (path: { pathname: string, option
       name: "appscho",
       route: "appscho",
       title: t("ONBOARDING_OTHER_UNIVERSITIES"),
-      image: require("@/assets/images/icon.png"),
+      image: require("@/assets/images/prism-icon.png"),
       hasLimitedSupport: false,
       type: ["univ"],
       onPress: () => { redirect({ pathname: './appscho/list' }) }
@@ -172,7 +172,7 @@ export function GetSupportedUniversities(redirect: (path: { pathname: string, op
       name: "limited-functions",
       title: t("Feature_Limited"),
       hasLimitedSupport: true,
-      image: require("@/assets/images/icon.png"),
+      image: require("@/assets/images/prism-icon.png"),
       type: "separator",
       onPress: () => { }
     },
