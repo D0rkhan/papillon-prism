@@ -1,4 +1,5 @@
 import { router, Stack } from 'expo-router';
+import PrismTasks from './PrismTasks';
 import { useHeaderHeight, useTheme } from 'expo-router/react-navigation';
 import { t } from 'i18next';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -498,4 +499,6 @@ const TasksViewWithBoundary = () => (
   </MainTabErrorBoundary>
 );
 
-export default TasksViewWithBoundary;
+// Prism tasks screen (all platforms); the legacy view stays exported for reference.
+export default PrismTasks;
+export { TasksViewWithBoundary as LegacyTasksView };

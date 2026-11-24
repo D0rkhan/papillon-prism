@@ -42,6 +42,11 @@ function serveApp(request) {
  */
 async function proxyFetch(_event, req) {
   const target = new URL(req.url);
+  // Tests on a copy of a real profile must never log in: a PRONOTE login rotates the
+  // single-use token and would disconnect the real app. PRISM_OFFLINE=1 blocks the network.
+  if (process.env.PRISM_OFFLINE) {
+    throw new Error("Hors ligne (PRISM_OFFLINE)");
+  }
   if (target.protocol !== "https:" && target.protocol !== "http:") {
     throw new Error(`Protocole refusé : ${target.protocol}`);
   }
@@ -62,7 +67,13 @@ async function proxyFetch(_event, req) {
     const cookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
     if (cookies.length) { headers["set-cookie"] = cookies.join(", "); }
     // Base64 so binary bodies (images, PDFs) survive the trip to the renderer.
-    const bodyBase64 = Buffer.from(await res.arrayBuffer()).toString("base64");
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (process.env.PRISM_DEBUG_NET) {
+      // Debug only: never logs bodies, just the endpoint, the PRONOTE function name and the status.
+      const fn = typeof req.body === "string" ? (req.body.match(/"id"\s*:\s*"([A-Za-z]+)"/) || [])[1] : undefined;
+      console.log(`[net] ${req.method ?? "GET"} ${target.host}${target.pathname.slice(0, 60)} ${fn ?? ""} → ${res.status} (${buffer.length} o)`);
+    }
+    const bodyBase64 = buffer.toString("base64");
     return { status: res.status, bodyBase64, headers, url: res.url };
   } finally {
     clearTimeout(timer);

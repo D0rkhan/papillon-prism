@@ -17,6 +17,8 @@ export default function Layout() {
       <Stack.Screen
         name="index"
         options={{
+          // Prism tasks screen draws its own week header.
+          headerShown: false,
           ...androidHeaderProps,
           // The custom title on this screen suppresses the bar's own scroll-edge
           // material, so iOS 26 gets our progressive blur instead. Everywhere

@@ -1,4 +1,5 @@
 import { Stack, useRouter } from "expo-router";
+import PrismCalendar from './PrismCalendar';
 import { useHeaderHeight, useTheme } from "expo-router/react-navigation";
 import { t } from "i18next";
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -394,7 +395,9 @@ const CalendarScreenWithBoundary = () => (
   </MainTabErrorBoundary>
 );
 
-export default CalendarScreenWithBoundary;
+// Prism calendar (all platforms); the legacy view stays exported for reference.
+export default PrismCalendar;
+export { CalendarScreenWithBoundary as LegacyCalendarView };
 
 const styles = StyleSheet.create({
   content: {
