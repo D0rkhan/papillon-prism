@@ -4,6 +4,7 @@ import { Linking, Platform } from "react-native";
 
 import { PRISM_UPDATE_REPO } from "@/constants/PrismUpdate";
 import { warn } from "@/utils/logger/logger";
+import { isNewer } from "@/utils/version";
 
 export interface PrismRelease {
   version: string;
@@ -11,16 +12,6 @@ export interface PrismRelease {
   pageUrl: string;
   notes: string;
   publishedAt: string;
-}
-
-/** "8.6.10" > "8.6.9" (numeric, segment by segment). */
-export function isNewer(candidate: string, current: string): boolean {
-  const a = candidate.replace(/^[^\d]*/, "").split(".").map(n => parseInt(n, 10) || 0);
-  const b = current.replace(/^[^\d]*/, "").split(".").map(n => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if ((a[i] ?? 0) !== (b[i] ?? 0)) { return (a[i] ?? 0) > (b[i] ?? 0); }
-  }
-  return false;
 }
 
 export const currentVersion = (): string => Constants.expoConfig?.version ?? "0.0.0";

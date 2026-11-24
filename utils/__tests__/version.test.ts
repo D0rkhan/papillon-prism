@@ -1,4 +1,4 @@
-import { isNewer } from "../usePrismUpdate";
+import { isNewer } from "../version";
 
 describe("isNewer", () => {
   it("compare les versions segment par segment", () => {
