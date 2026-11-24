@@ -11,7 +11,7 @@ import { Services } from "@/stores/account/types";
 import { useSettingsStore } from "@/stores/settings";
 import { accent, ActionButton, Card, GText, Icon, PrismScreen, radius, Row, Segmented, semantic, space, useGlass, webOnly, withAlpha } from "@/ui/glass";
 import { formatSchoolName } from "@/utils/format/formatSchoolName";
-import { relinkPronote } from "@/utils/pronote/relink";
+import PronoteLoginCard, { describePronoteFailure } from "@/components/prism/PronoteLoginCard";
 
 import packagejson from "../../../package.json";
 
@@ -52,11 +52,10 @@ export default function ReglagesScreen() {
       await initializeAccountManager(account.id, { force: true });
       setSyncResult(`Synchronisé à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
     } catch (e) {
-      const text = String(e);
-      // A spent / refused token cannot be retried: only a new login fixes it.
-      const auth = /BadCredentials|credential|AuthenticationError|token/i.test(text) || (e as { name?: string })?.name === "AuthenticationError";
-      setNeedsRelink(auth);
-      setSyncResult(auth ? "PRONOTE a refusé la connexion enregistrée : reconnecte-toi une fois pour obtenir un nouveau jeton." : `Échec : ${text.replace(/^Error:\s*/, "").slice(0, 140)}`);
+      const pronoteService = account.services.find(s => s.serviceId === Services.PRONOTE);
+      const failure = describePronoteFailure(e, pronoteService?.id);
+      setNeedsRelink(failure.relink);
+      setSyncResult(failure.text);
     } finally {
       setSyncing(false);
     }
@@ -105,21 +104,14 @@ export default function ReglagesScreen() {
           <ActionButton icon="Refresh" label="Synchroniser maintenant" onPress={sync} busy={syncing} />
           <View style={{ flex: 1 }}>
             <GText variant="callout">{pronote ? "PRONOTE" : "Compte"}</GText>
-            <GText variant="caption" color={syncResult?.startsWith("Échec") || needsRelink ? semantic.danger : g.textTertiary}>
+            <GText variant="caption" color={syncResult && /Échec|bloque|refusé/.test(syncResult) ? semantic.danger : g.textTertiary}>
               {syncing ? "Synchronisation…" : syncResult ?? "Synchronisation automatique au retour sur l'app et toutes les 20 min."}
             </GText>
           </View>
         </View>
-        {pronote && (
-          <Pressable
-            onPress={async () => { if (!(await relinkPronote())) { setSyncResult("Adresse PRONOTE inconnue : déconnecte-toi puis reconnecte-toi."); } }}
-            style={[{ marginTop: space.lg, height: 40, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: space.sm, backgroundColor: needsRelink ? g.inverse : g.glassFill, borderWidth: 1, borderColor: g.glassBorder }, webOnly({ cursor: "pointer" })]}
-          >
-            <Icon name="Login" size={16} color={needsRelink ? g.onInverse : g.text} />
-            <GText variant="callout" color={needsRelink ? g.onInverse : g.text}>Se reconnecter à PRONOTE</GText>
-          </Pressable>
-        )}
       </Card>
+
+      {pronote && <PronoteLoginCard highlight={needsRelink} onConnected={text => { setNeedsRelink(false); setSyncResult(text); }} />}
 
       <Card>
         <GText variant="overline" tone="secondary" style={{ marginBottom: space.md }}>Apparence</GText>

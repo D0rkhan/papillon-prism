@@ -1,7 +1,9 @@
 import {
   AccountKind,
+  BadCredentialsError,
   BusyPageError,
   createSessionHandle,
+  loginCredentials,
   loginToken,
   PageUnavailableError,
   RefreshInformation,
@@ -18,6 +20,9 @@ import { SecurityChallengeError } from "@/services/errors/SecurityChallengeError
 import { classifyPronoteError } from "@/services/pronote/errors";
 import { Auth } from "@/stores/account/types";
 import { customFetcher } from "@/utils/pronote/fetcher";
+import { warn } from "@/utils/logger/logger";
+
+import { readSavedLogin } from "./savedLogin";
 
 const MAX_ATTEMPTS = 2;
 const RETRY_BASE_DELAY_MS = 2000;
@@ -79,6 +84,16 @@ export function refreshPronoteAccount(
           return await loginWithStoredToken(tracker);
         } catch (e) {
           lastError = e;
+          // The token is spent or refused: a saved password gets a new one at
+          // once, instead of leaving the account disconnected. One try only —
+          // repeated refusals are what gets the IP rate-limited.
+          if (e instanceof BadCredentialsError) {
+            const saved = await readSavedLogin(accountId);
+            if (saved) {
+              warn("PRONOTE refused the stored token, logging in again with the saved password.", "refreshPronoteAccount");
+              return await loginWithSavedPassword(tracker, saved);
+            }
+          }
           if (!isSafeToRetry(e)) {
             throw e;
           }
@@ -122,3 +137,58 @@ async function loginWithStoredToken(tracker: AuthTracker): Promise<PronoteRefres
     throw e;
   }
 }
+
+/** Direct PRONOTE login (not ENT) with the saved username and password. */
+async function loginWithSavedPassword(
+  tracker: AuthTracker,
+  saved: { username: string; password: string }
+): Promise<PronoteRefresh> {
+  const handle = createSessionHandle(customFetcher);
+  const stored = tracker.readCredentials();
+  const deviceUUID = String(stored.additionals?.["deviceUUID"] || "");
+  const url = String(stored.additionals?.["url"] || stored.additionals?.["instanceURL"] || "");
+  if (!url || !deviceUUID) {
+    throw new CredentialsMissingError("No PRONOTE address stored, the account has to be linked again.");
+  }
+  try {
+    const refresh = await loginCredentials(handle, {
+      url,
+      kind: (stored.additionals?.["kind"] as AccountKind) || AccountKind.STUDENT,
+      username: saved.username,
+      password: saved.password,
+      deviceUUID,
+    });
+    const auth = toAuth(refresh, deviceUUID);
+    tracker.credentialReceived(auth);
+    return { auth, session: handle };
+  } catch (e) {
+    if (e instanceof SecurityError) {
+      throw new SecurityChallengeError(e, handle, deviceUUID);
+    }
+    throw e;
+  }
+}
+
+/**
+ * Logs in from the settings screen with a username and password (direct
+ * PRONOTE account), returning the auth to store. Used to relink without the
+ * web page, and to check a password before saving it.
+ */
+export async function loginPronoteWithPassword(
+  url: string,
+  username: string,
+  password: string,
+  deviceUUID: string
+): Promise<{ auth: Auth; session: SessionHandle }> {
+  const handle = createSessionHandle(customFetcher);
+  try {
+    const refresh = await loginCredentials(handle, { url, kind: AccountKind.STUDENT, username, password, deviceUUID });
+    return { auth: toAuth(refresh, deviceUUID), session: handle };
+  } catch (e) {
+    if (e instanceof SecurityError) {
+      throw new SecurityChallengeError(e, handle, deviceUUID);
+    }
+    throw e;
+  }
+}
+

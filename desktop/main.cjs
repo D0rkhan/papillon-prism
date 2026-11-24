@@ -3,7 +3,7 @@
 // Serves the Expo web build from a private `prism://app` origin and gives the web app
 // what a browser cannot: school-service requests without CORS, with full control over
 // cookies and redirects (through Node's fetch in this main process).
-const { app, BrowserWindow, ipcMain, protocol, session, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, protocol, safeStorage, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -132,6 +132,35 @@ function loginWindow(event, { url, userAgent, doneUrlPattern }) {
   });
 }
 
+// Secrets (saved PRONOTE login) encrypted with the OS keyring (libsecret / KWallet).
+// The renderer only gets get/set/remove by key, never the file or the key.
+const secretsFile = () => path.join(app.getPath("userData"), "prism-secrets.json");
+const readSecrets = () => {
+  try { return JSON.parse(fs.readFileSync(secretsFile(), "utf8")); } catch { return {}; }
+};
+const writeSecrets = data => fs.writeFileSync(secretsFile(), JSON.stringify(data), { mode: 0o600 });
+const SECRET_KEY = /^[a-z0-9:._-]{1,120}$/i;
+
+function secretGet(_e, key) {
+  if (!SECRET_KEY.test(String(key))) { return null; }
+  const value = readSecrets()[key];
+  if (!value) { return null; }
+  try { return safeStorage.decryptString(Buffer.from(value, "base64")); } catch { return null; }
+}
+function secretSet(_e, key, value) {
+  if (!SECRET_KEY.test(String(key)) || typeof value !== "string" || value.length > 4096) { return false; }
+  const data = readSecrets();
+  data[key] = safeStorage.encryptString(value).toString("base64");
+  writeSecrets(data);
+  return true;
+}
+function secretRemove(_e, key) {
+  const data = readSecrets();
+  delete data[key];
+  writeSecrets(data);
+  return true;
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -187,6 +216,9 @@ app.whenReady().then(() => {
   protocol.handle("prism", serveApp);
   ipcMain.handle("prism:fetch", proxyFetch);
   ipcMain.handle("prism:login-window", loginWindow);
+  ipcMain.handle("prism:secret-get", secretGet);
+  ipcMain.handle("prism:secret-set", secretSet);
+  ipcMain.handle("prism:secret-remove", secretRemove);
   createWindow();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) { createWindow(); } });
 });

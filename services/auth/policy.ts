@@ -65,11 +65,15 @@ export const isSuspended = (state: ServiceAuthState | undefined, runtimeId: stri
   Boolean(state.nextRetryAt && now < state.nextRetryAt);
 
 /**
- * What an explicit retry from the user (pull to refresh) lifts: a backoff or
- * a block. A suspension stays, the server enforces it and retrying extends it.
+ * What an explicit retry from the user (pull to refresh, ⟳) lifts: a backoff
+ * only. A suspension is enforced by the server and a rejected credential will
+ * be rejected again — sending it anyway is exactly what gets the IP
+ * rate-limited. Only a new login (relink) replaces it, which lifts the block.
  */
 export const liftedByUserRetry = (state: ServiceAuthState): ServiceAuthState =>
-  state.step === AuthStep.Failed && state.failure?.reason !== "suspended"
+  state.step === AuthStep.Failed &&
+  state.failure?.reason !== "suspended" &&
+  !(state.failure && RELINK_AUTH_FAILURES.includes(state.failure.reason))
     // Without a fingerprint, authHold no longer sees the stored credentials as the rejected ones.
     ? { ...state, nextRetryAt: undefined, credentialFingerprint: undefined }
     : state;

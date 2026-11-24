@@ -5,6 +5,7 @@ import {
   BadCredentialsError,
   BusyPageError,
   PageUnavailableError,
+  RateLimitedError,
   SecurityError,
   SessionExpiredError,
   SuspendedIPError,
@@ -17,7 +18,9 @@ export const classifyPronoteError: AuthErrorClassifier = e => {
   if (e instanceof SecurityChallengeError || e instanceof SecurityError) {
     return "security_challenge";
   }
-  if (e instanceof SuspendedIPError) {
+  // Too many logins in a short time: PRONOTE blocks the IP for a while, and
+  // every new attempt (even from the login page) extends the block.
+  if (e instanceof SuspendedIPError || e instanceof RateLimitedError) {
     return "suspended";
   }
   if (e instanceof AccessDeniedError || e instanceof AccountDisabledError) {

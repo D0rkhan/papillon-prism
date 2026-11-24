@@ -30,12 +30,20 @@ interface PrismDesktop {
   platform: string;
   version: string;
   fetch: (request: DesktopFetchRequest) => Promise<RawDesktopResponse>;
+  secret?: {
+    get: (key: string) => Promise<string | null>;
+    set: (key: string, value: string) => Promise<boolean>;
+    remove: (key: string) => Promise<boolean>;
+  };
 }
 
 const getBridge = (): PrismDesktop | undefined =>
   typeof window !== "undefined" ? (window as unknown as { prismDesktop?: PrismDesktop }).prismDesktop : undefined;
 
 export const isDesktop = (): boolean => !!getBridge();
+
+/** OS-keyring backed secret storage of the desktop shell (undefined elsewhere). */
+export const desktopSecrets = () => getBridge()?.secret;
 
 const fromBase64 = (b64: string): Uint8Array => {
   const bin = atob(b64);
