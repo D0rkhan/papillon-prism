@@ -1,0 +1,87 @@
+name: Prism — APK Android
+
+# Builds a signed APK and publishes it as a GitHub release. The app's
+# « Mettre à jour » button reads the latest release of this repository.
+# Push a tag "prism-v<version>" (scripts/prism-release.sh does it) or run it by hand.
+on:
+  push:
+    tags:
+      - "prism-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prism-android
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    name: Build and publish the APK
+    # Never on the upstream Papillon repository.
+    if: github.repository != 'PapillonApp/Papillon'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean
+
+      - name: Signing key
+        env:
+          KEYSTORE: ${{ secrets.PRISM_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then echo "Secret PRISM_KEYSTORE manquant"; exit 1; fi
+          echo "$KEYSTORE" | base64 --decode > android/app/prism-release.keystore
+          sed -i '/signingConfigs {/a\        release {\n            storeFile file('\''prism-release.keystore'\'')\n            storePassword System.getenv("PRISM_KEYSTORE_PASSWORD")\n            keyAlias "prism"\n            keyPassword System.getenv("PRISM_KEYSTORE_PASSWORD")\n        }' android/app/build.gradle
+          sed -i '/release {/,/}/ s/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/' android/app/build.gradle
+          grep -n "signingConfig" android/app/build.gradle
+
+      - name: Gradle settings
+        run: |
+          chmod +x android/gradlew
+          {
+            echo ""
+            echo "org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=1024m"
+            echo "org.gradle.parallel=true"
+            echo "org.gradle.caching=true"
+            echo "reactNativeArchitectures=arm64-v8a"
+          } >> android/gradle.properties
+
+      - name: Build APK
+        env:
+          PRISM_KEYSTORE_PASSWORD: ${{ secrets.PRISM_KEYSTORE_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" != prism-v* ]]; then TAG="prism-v${VERSION}"; fi
+          cp android/app/build/outputs/apk/release/app-release.apk "Papillon-Prism-${VERSION}.apk"
+          NOTES=$(git log -1 --pretty=%B)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "Papillon-Prism-${VERSION}.apk" --clobber
+          else
+            gh release create "$TAG" "Papillon-Prism-${VERSION}.apk" --title "Papillon Prism ${VERSION}" --notes "$NOTES"
+          fi

@@ -4,6 +4,7 @@ import { Alert, Platform, Pressable, View } from "react-native";
 
 import { ClearDatabaseForAccount } from "@/database/DatabaseProvider";
 import { allowAllAuthRetries } from "@/services/auth/coordinator";
+import { usePrismUpdate } from "@/hooks/usePrismUpdate";
 import { initializeAccountManager } from "@/services/shared";
 import { useAccountStore } from "@/stores/account";
 import { Services } from "@/stores/account/types";
@@ -39,6 +40,7 @@ export default function ReglagesScreen() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [needsRelink, setNeedsRelink] = useState(false);
   const [taps, setTaps] = useState(0);
+  const update = usePrismUpdate();
 
   const sync = async () => {
     if (!account) { return; }
@@ -133,6 +135,29 @@ export default function ReglagesScreen() {
         <Row leading={<Icon name="Pie" />} title="Moyennes détaillées" subtitle="Vérifier chaque calcul" onPress={() => router.push("/(features)/prism/calculs")} />
         <Row leading={<Icon name="Palette" />} title="Matières" subtitle="Noms et couleurs des matières" onPress={() => router.push("/(settings)/subject_personalization")} />
       </Card>
+
+      {update.supported && (
+        <Card>
+          <GText variant="overline" tone="secondary" style={{ marginBottom: space.sm }}>Mises à jour</GText>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+            <View style={{ flex: 1 }}>
+              <GText variant="callout">
+                {update.available && update.release ? `Version ${update.release.version} disponible` : `Version ${update.current} — à jour`}
+              </GText>
+              <GText variant="caption" color={update.error ? semantic.warning : g.textTertiary}>
+                {update.error ?? (update.checkedAt ? `Vérifié à ${new Date(update.checkedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "Vérification…")}
+              </GText>
+            </View>
+            {update.available ? (
+              <Pressable onPress={update.install} style={{ paddingHorizontal: space.lg, height: 36, borderRadius: radius.pill, justifyContent: "center", backgroundColor: g.inverse }}>
+                <GText variant="caption" color={g.onInverse}>Mettre à jour</GText>
+              </Pressable>
+            ) : (
+              <ActionButton icon="Refresh" label="Rechercher une mise à jour" onPress={() => update.check(true)} busy={update.checking} />
+            )}
+          </View>
+        </Card>
+      )}
 
       <Card padding={space.lg}>
         <Row first leading={<Icon name="Trash" />} title="Vider le cache" subtitle="Efface les données locales et retélécharge tout" onPress={clearCache} />

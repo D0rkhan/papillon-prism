@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getWeekNumberFromDate } from "@/database/useHomework";
 import { useBacAnalysis } from "@/hooks/useBacAnalysis";
 import { useHasPronote } from "@/hooks/usePronoteExtra";
+import { usePrismUpdate } from "@/hooks/usePrismUpdate";
 import type { Grade, Subject } from "@/services/shared/grade";
 import type { Homework } from "@/services/shared/homework";
 import { Course, CourseStatus } from "@/services/shared/timetable";
@@ -208,6 +209,7 @@ export default function PrismHome(props: PrismHomeProps) {
 
   const { analysis } = useBacAnalysis({ lite: true });
   const hasPronote = useHasPronote();
+  const update = usePrismUpdate();
   const day = props.upcomingDays[0];
   const recent = props.grades.slice(0, 5);
   // Official average when the school publishes it, otherwise Prism's exact computation.
@@ -330,6 +332,23 @@ export default function PrismHome(props: PrismHomeProps) {
               <ActionButton icon="Gears" label="Réglages" onPress={() => router.navigate("/(features)/prism/reglages")} />
             </View>
           </View>
+
+          {update.available && update.release && (
+            <Card onPress={update.install}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
+                <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: withAlpha(accent, 0.2) }}>
+                  <Icon name="ArrowDown" size={18} color={accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <GText variant="title3">Mise à jour {update.release.version} disponible</GText>
+                  <GText variant="caption" tone="tertiary">Touche pour télécharger, puis « Installer ». Tes données sont conservées.</GText>
+                </View>
+                <View style={{ paddingHorizontal: space.md, height: 32, borderRadius: 16, justifyContent: "center", backgroundColor: g.inverse }}>
+                  <GText variant="caption" color={g.onInverse}>Mettre à jour</GText>
+                </View>
+              </View>
+            </Card>
+          )}
 
           {hasPronote && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
