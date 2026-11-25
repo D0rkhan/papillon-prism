@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { Field, PillButton } from "@/components/revision/parts";
+import { programChapter } from "@/core/practice/curriculum";
 import { formatInterval, previewIntervals, Rating, RATING_LABEL } from "@/core/revision/fsrs";
 import { familyOf, MODE_LABEL, protocolFor, SessionMode } from "@/core/revision/methods";
 import { useRevisionStore } from "@/stores/revision";
@@ -164,6 +165,29 @@ export default function RevisionSession() {
           <GText variant="caption" tone="secondary" style={{ flex: 1 }}>{current.why}</GText>
         </View>
       </Card>
+
+      {(() => {
+        // Real exercises for the practice step, when this subject has generated ones.
+        if (!/Exercices|Épreuve blanche/.test(current.title)) { return null; }
+        const own = programChapter(chapter.programId)?.skills.length ? chapter.id : null;
+        const subjectHas = Object.values(store.chapters).some(c => c.subjectId === chapter.subjectId && programChapter(c.programId)?.skills.length);
+        if (!own && !subjectHas) { return null; }
+        const exam = current.title.startsWith("Épreuve");
+        return (
+          <Card tint={aurora.violet}>
+            <GText variant="callout">
+              {exam ? "Fais l'épreuve dans l'app : chronométrée, corrigée, notée sur 20." : "Fais-les dans l'app : exercices générés, corrigés pas à pas, niveau ajusté à ta réussite."}
+            </GText>
+            <View style={{ flexDirection: "row", marginTop: space.md }}>
+              <PillButton
+                label={exam ? "Lancer le contrôle blanc" : "Lancer 5 exercices"}
+                icon="Play"
+                onPress={() => router.push({ pathname: "/(features)/revision/pratique", params: { ...(own ? { chapterId: own } : { subjectId: chapter.subjectId }), length: exam ? "6" : "5", ...(exam ? { exam: "1" } : {}) } } as never)}
+              />
+            </View>
+          </Card>
+        );
+      })()}
 
       {current.cards && (
         <Card>

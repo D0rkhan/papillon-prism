@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { parseCardText } from "@/core/practice/cards";
+import { deckCards, programChapter } from "@/core/practice/curriculum";
+import { Attempt, recordAttempt, SkillState } from "@/core/practice/mastery";
 import { MemoryState, Rating, review } from "@/core/revision/fsrs";
 import type { SessionMode } from "@/core/revision/methods";
 
@@ -19,7 +22,9 @@ export interface RevChapter {
   subjectId: string;
   title: string;
   createdAt: number;
-  source: "manuel" | "pronote";
+  source: "manuel" | "pronote" | "programme";
+  /** Chapter of the official programme it follows ("maths:derivation"). */
+  programId?: string;
   memory?: MemoryState;
 }
 
@@ -45,10 +50,24 @@ export interface RevSession {
   id: string;
   subjectId: string;
   chapterId?: string;
-  mode: SessionMode;
+  mode: SessionMode | "pratique" | "blanc";
   start: number;
   minutes: number;
   rating?: Rating;
+  /** Practice and mock tests: right answers out of total. */
+  score?: { right: number; total: number };
+}
+
+export interface MockResult {
+  id: string;
+  subjectId: string;
+  at: number;
+  right: number;
+  total: number;
+  mark: number;
+  /** Mark predicted from mastery just before, to show the model is honest. */
+  predicted: number | null;
+  chapterIds: string[];
 }
 
 interface RevisionState {
@@ -61,6 +80,9 @@ interface RevisionState {
   dailyMinutes: number;
   /** PRONOTE suggestions the student dismissed (lesson titles, homework ids). */
   dismissed: string[];
+  /** Mastery of each generated skill (Bayesian Knowledge Tracing + FSRS). */
+  skills: Record<string, SkillState>;
+  mocks: MockResult[];
 
   upsertSubjects: (subjects: RevSubject[]) => void;
   setSubjectHidden: (id: string, hidden: boolean) => void;
@@ -76,7 +98,15 @@ interface RevisionState {
   logSession: (session: Omit<RevSession, "id">) => void;
   setDailyMinutes: (minutes: number) => void;
   dismiss: (key: string) => void;
+  /** Follows a programme chapter: creates it with its ready-made cards. Returns its id. */
+  activateProgram: (programId: string, subjectId: string) => string;
+  recordSkill: (skillId: string, attempt: Attempt, now?: number) => void;
+  /** "question ; réponse" or tab-separated lines (Anki, Quizlet exports). Returns the count. */
+  importCards: (chapterId: string, text: string) => number;
+  addMock: (mock: Omit<MockResult, "id">) => void;
 }
+
+export { parseCardText };
 
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
@@ -90,6 +120,8 @@ export const useRevisionStore = create<RevisionState>()(
       sessions: [],
       dailyMinutes: 60,
       dismissed: [],
+      skills: {},
+      mocks: [],
 
       upsertSubjects: subjects => {
         const current = get().subjects;
@@ -146,11 +178,50 @@ export const useRevisionStore = create<RevisionState>()(
       logSession: session => set(state => ({ sessions: [...state.sessions, { ...session, id: newId() }].slice(-1500) })),
       setDailyMinutes: dailyMinutes => set({ dailyMinutes }),
       dismiss: key => set(state => ({ dismissed: state.dismissed.includes(key) ? state.dismissed : [...state.dismissed, key] })),
+      activateProgram: (programId, subjectId) => {
+        const existing = Object.values(get().chapters).find(c => c.programId === programId);
+        if (existing) { return existing.id; }
+        const program = programChapter(programId);
+        const id = newId();
+        const now = Date.now();
+        set(state => {
+          const cards = { ...state.cards };
+          deckCards(program?.deck).forEach((c, i) => {
+            const cid = `${id}-${i}`;
+            cards[cid] = { id: cid, chapterId: id, front: c.front, back: c.back, createdAt: now };
+          });
+          return {
+            chapters: { ...state.chapters, [id]: { id, subjectId, title: program?.title ?? programId, createdAt: now, source: "programme", programId } },
+            cards,
+          };
+        });
+        return id;
+      },
+      recordSkill: (skillId, attempt, now = Date.now()) => set(state => ({
+        skills: { ...state.skills, [skillId]: recordAttempt(state.skills[skillId], attempt, now) },
+      })),
+      importCards: (chapterId, text) => {
+        const parsed = parseCardText(text);
+        if (!parsed.length) { return 0; }
+        const now = Date.now();
+        set(state => {
+          const cards = { ...state.cards };
+          parsed.forEach((c, i) => {
+            const id = `${newId()}${i}`;
+            cards[id] = { id, chapterId, front: c.front, back: c.back, createdAt: now };
+          });
+          return { cards };
+        });
+        return parsed.length;
+      },
+      addMock: mock => set(state => ({ mocks: [...state.mocks, { ...mock, id: newId() }].slice(-200) })),
     }),
     {
       name: "revision-storage",
       storage: createMMKVStorage<RevisionState>("revision-storage"),
-      version: 1,
+      version: 2,
+      // v1 → v2: skill mastery and mock tests (empty at first).
+      migrate: persisted => ({ skills: {}, mocks: [], ...(persisted as object) }) as unknown as RevisionState,
     }
   )
 );

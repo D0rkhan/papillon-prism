@@ -3,6 +3,8 @@ import React, { useMemo, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 
 import { Choice, dayLabel, Field, memoryColor, MUTED, PillButton } from "@/components/revision/parts";
+import { matchChapters, programChapter, programFor } from "@/core/practice/curriculum";
+import { predictedMark } from "@/core/practice/mastery";
 import { retrievability } from "@/core/revision/fsrs";
 import { EVIDENCE, FAMILY_LABEL, familyOf, MODE_LABEL } from "@/core/revision/methods";
 import { examPlan, planToday, Suggestion } from "@/core/revision/planner";
@@ -30,7 +32,13 @@ import { getSubjectColor } from "@/utils/subjects/colors";
 
 const DAY = 24 * 3600 * 1000;
 
+/** Programme chapters with exercises train on real exercises; the others get the guided session. */
 function startSession(router: ReturnType<typeof useRouter>, s: Suggestion) {
+  const programId = useRevisionStore.getState().chapters[s.chapter.id]?.programId;
+  if (programChapter(programId)?.skills.length && s.mode !== "decouverte") {
+    router.push({ pathname: "/(features)/revision/pratique", params: { chapterId: s.chapter.id, ...(s.mode === "controle" ? { exam: "1" } : {}) } } as never);
+    return;
+  }
   router.push({ pathname: "/(features)/revision/session", params: { chapterId: s.chapter.id, mode: s.mode } } as never);
 }
 
@@ -114,7 +122,11 @@ export default function RevisionHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const columns = width >= 1000 ? 3 : width >= 560 ? 2 : 1;
-  const { subjects, chapters, exams, ranked, dueCards } = useRevisionData();
+  const { subjects, chapters, exams, ranked, dueCards, ideas } = useRevisionData();
+  const skillStates = useRevisionStore(s => s.skills);
+  const activateProgram = useRevisionStore(s => s.activateProgram);
+  const dismiss = useRevisionStore(s => s.dismiss);
+  const dismissed = useRevisionStore(s => s.dismissed);
   const sessions = useRevisionStore(s => s.sessions);
   const dailyMinutes = useRevisionStore(s => s.dailyMinutes);
   const setDailyMinutes = useRevisionStore(s => s.setDailyMinutes);
@@ -176,6 +188,67 @@ export default function RevisionHome() {
           </GText>
         </Card>
       )}
+
+      {(() => {
+        // Programme chapters seen in the cahier de textes or announced in a test, not followed yet.
+        const followed = new Set(chapters.map(c => c.programId).filter(Boolean));
+        const found = new Map<string, { programId: string; subjectId: string; title: string; subject: string }>();
+        for (const s of subjects) {
+          const texts = [...(ideas.get(s.id) ?? []), ...exams.filter(e => e.subjectId === s.id).map(e => e.title)];
+          for (const t of texts) {
+            for (const p of matchChapters(s.canonical ?? s.id, t)) {
+              if (!followed.has(p.id) && !dismissed.includes(`program:${p.id}`)) { found.set(p.id, { programId: p.id, subjectId: s.id, title: p.title, subject: s.name }); }
+            }
+          }
+        }
+        const list = [...found.values()].slice(0, 6);
+        if (!list.length) { return null; }
+        return (
+          <Card>
+            <SectionHeader title="Vu en cours, à suivre" />
+            <GText variant="caption" tone="tertiary" style={{ marginBottom: space.sm }}>
+              Repéré dans ton cahier de textes et tes devoirs PRONOTE. Suivre un chapitre ajoute ses exercices corrigés et ses cartes.
+            </GText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+              {list.map(x => (
+                <Chip key={x.programId} label={`+ ${x.title} · ${x.subject}`} color={aurora.violet} onPress={() => activateProgram(x.programId, x.subjectId)} />
+              ))}
+              <Chip label="Ignorer" color={MUTED} onPress={() => list.forEach(x => dismiss(`program:${x.programId}`))} />
+            </View>
+          </Card>
+        );
+      })()}
+
+      {(() => {
+        const trainable = chapters.filter(c => programChapter(c.programId)?.skills.length);
+        if (!trainable.length) { return null; }
+        const bySubject = new Map<string, number>();
+        trainable.forEach(c => bySubject.set(c.subjectId, (bySubject.get(c.subjectId) ?? 0) + 1));
+        return (
+          <Card>
+            <SectionHeader title="S'entraîner" />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+              {[...bySubject.keys()].map(sid => {
+                const subject = subjects.find(x => x.id === sid);
+                const skills = trainable.filter(c => c.subjectId === sid).flatMap(c => programChapter(c.programId)?.skills ?? []);
+                const mark = predictedMark(skills.map(k => skillStates[k]));
+                return (
+                  <PillButton
+                    key={sid}
+                    label={`${subject?.name ?? sid}${mark !== null ? ` · ≈ ${String(mark).replace(".", ",")}/20` : ""}`}
+                    icon="Sparkles"
+                    tone="secondary"
+                    onPress={() => router.push({ pathname: "/(features)/revision/pratique", params: { subjectId: sid } } as never)}
+                  />
+                );
+              })}
+            </View>
+            <GText variant="caption" tone="tertiary" style={{ marginTop: space.sm }}>
+              10 exercices corrigés, mélangés entre tes chapitres, au niveau qui te fait réussir environ 85 % du temps. « ≈ /20 » : ta note probable à un contrôle aujourd'hui.
+            </GText>
+          </Card>
+        );
+      })()}
 
       {top ? (
         <NowCard s={top} />
@@ -243,6 +316,29 @@ export default function RevisionHome() {
                       </View>
                       <Chip label="Retirer" color={MUTED} onPress={() => deleteExam(e.id)} />
                     </View>
+                    {(() => {
+                      const matched = matchChapters(subject?.canonical ?? e.subjectId, e.title).filter(p => p.skills.length);
+                      const scope = matched.length ? matched : programFor(subject?.canonical ?? e.subjectId).filter(p => chapters.some(c => c.programId === p.id) && p.skills.length);
+                      if (!scope.length) { return null; }
+                      const mark = predictedMark(scope.flatMap(p => p.skills).map(k => skillStates[k]));
+                      const followedIds = scope.map(p => chapters.find(c => c.programId === p.id)?.id).filter(Boolean) as string[];
+                      return (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, flexWrap: "wrap" }}>
+                          <GText variant="caption" tone="secondary">
+                            {scope.map(p => p.title).join(", ")}{mark !== null ? ` · note probable ≈ ${String(mark).replace(".", ",")}/20` : ""}
+                          </GText>
+                          {followedIds.length ? (
+                            <Chip
+                              label="Contrôle blanc"
+                              color={semantic.warning}
+                              onPress={() => router.push({ pathname: "/(features)/revision/pratique", params: followedIds.length === 1 ? { chapterId: followedIds[0], exam: "1" } : { subjectId: e.subjectId, exam: "1" } } as never)}
+                            />
+                          ) : (
+                            <Chip label="Suivre ces chapitres" color={aurora.violet} onPress={() => scope.forEach(p => activateProgram(p.id, e.subjectId))} />
+                          )}
+                        </View>
+                      );
+                    })()}
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs }}>
                       {steps.map(st => (
                         <Chip key={st.date} label={`${dayLabel(st.date, now)} · ${st.label}`} color={st.date <= now ? semantic.warning : aurora.cyan} />

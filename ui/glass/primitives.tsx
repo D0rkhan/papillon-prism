@@ -139,14 +139,14 @@ export function Chip({ label, color, onPress, style }: { label: string; color: s
   const content = (
     <View
       style={[
-        { paddingHorizontal: space.md, paddingVertical: space.xs + 1, borderRadius: radius.pill, backgroundColor: withAlpha(color, 0.16), borderWidth: 1, borderColor: withAlpha(color, 0.4), alignSelf: "flex-start" },
+        { paddingHorizontal: space.md, paddingVertical: space.xs + 1, borderRadius: radius.pill, backgroundColor: withAlpha(color, 0.16), borderWidth: 1, borderColor: withAlpha(color, 0.4), alignSelf: "flex-start", maxWidth: "100%" },
         style,
       ]}
     >
       <GText variant="caption" color={color}>{label}</GText>
     </View>
   );
-  return onPress ? <Pressable onPress={onPress} hitSlop={8}>{content}</Pressable> : content;
+  return onPress ? <Pressable onPress={onPress} hitSlop={8} style={{ maxWidth: "100%" }}>{content}</Pressable> : content;
 }
 
 // ───────────────────────────── Distribution chart ─────────────────────────────

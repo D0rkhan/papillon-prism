@@ -211,5 +211,8 @@ export const EVIDENCE: { title: string; detail: string; origin: string }[] = [
   { title: "S'expliquer le pourquoi", detail: "Expliquer à voix haute et se demander « pourquoi ? » révèle et répare les trous de compréhension.", origin: "Chi et al., 1994 · technique Feynman" },
   { title: "Image + mots", detail: "Un schéma redessiné de mémoire laisse deux traces au lieu d'une.", origin: "Paivio, double codage" },
   { title: "Du concret à l'abstrait", detail: "En maths, partir d'un exemple, le schématiser, puis généraliser.", origin: "Méthode de Singapour (CPA)" },
+  { title: "S'entraîner sur des exercices corrigés", detail: "Chaque exercice généré est corrigé tout de suite, avec la démarche pas à pas : étudier une solution juste après une erreur fait mieux progresser que chercher seul longtemps.", origin: "Effet de l'exemple résolu (Sweller) · rétroaction immédiate" },
+  { title: "Le bon niveau : 85 % de réussite", detail: "On apprend le plus vite quand on réussit environ 85 % du temps : trop facile n'apprend rien, trop dur décourage. La difficulté s'ajuste après chaque réponse.", origin: "Wilson et al., 2019 (Nature Communications)" },
+  { title: "Mesurer ce qui est su", detail: "La maîtrise de chaque compétence est estimée par traçage bayésien des connaissances, comme dans les tuteurs intelligents : une réponse juste peut être de la chance, une erreur une étourderie.", origin: "Corbett & Anderson, 1995" },
   { title: "Des blocs de concentration", detail: "25 minutes sans téléphone, 5 minutes de pause : la concentration tient, la fatigue se gère.", origin: "Pomodoro (F. Cirillo)" },
 ];
