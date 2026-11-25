@@ -1,7 +1,7 @@
 {
   "name": "papillon-prism-desktop",
   "productName": "Papillon Prism",
-  "version": "8.6.5",
+  "version": "8.6.6",
   "description": "Papillon Prism — version bureau Linux",
   "license": "GPL-3.0-only",
   "main": "main.cjs",
