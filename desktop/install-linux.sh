@@ -28,6 +28,11 @@ Categories=Education;
 StartupWMClass=Papillon Prism
 DESKTOP
 update-desktop-database "${HOME}/.local/share/applications" 2>/dev/null || true
+# Same icon name, new picture: refresh the caches or menus keep the old logo.
+touch "${HOME}/.local/share/icons/hicolor"
+gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" 2>/dev/null || true
+command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+command -v kbuildsycoca5 >/dev/null 2>&1 && kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
 echo "Papillon Prism installé. Lance-le depuis le menu ou avec : ~/.local/bin/papillon-prism.AppImage"
 if ! compgen -G "/usr/lib/libfuse.so.2*" >/dev/null && ! compgen -G "/usr/lib64/libfuse.so.2*" >/dev/null && ! ldconfig -p 2>/dev/null | grep -q "libfuse.so.2"; then
   echo "Note : les AppImage ont besoin de FUSE 2 → sudo pacman -S fuse2"
