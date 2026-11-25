@@ -17,8 +17,7 @@ fs.cpSync(from, to, { recursive: true });
 const wasm = path.join(root, "node_modules", "canvaskit-wasm", "bin", "full", "canvaskit.wasm");
 if (fs.existsSync(wasm)) { fs.copyFileSync(wasm, path.join(to, "canvaskit.wasm")); }
 
-// App icon for the Linux package.
-const icon = path.join(root, "assets", "images", "icon.png");
-if (fs.existsSync(icon)) { fs.copyFileSync(icon, path.join(root, "desktop", "icon.png")); }
+// The Linux icon is desktop/icon.png, rendered from assets/brand by scripts/prism-icons.sh.
+// (It used to be copied from assets/images/icon.png, the old Papillon logo, on every build.)
 
 console.log(`Web build copied to ${path.relative(root, to)}`);
