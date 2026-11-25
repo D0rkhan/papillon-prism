@@ -4,10 +4,12 @@ import { Platform, Pressable, RefreshControl, ScrollView, StatusBar, useWindowDi
 import Reanimated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import SyncBanner from "@/components/prism/SyncBanner";
 import { getWeekNumberFromDate } from "@/database/useHomework";
 import { useBacAnalysis } from "@/hooks/useBacAnalysis";
 import { useHasPronote } from "@/hooks/usePronoteExtra";
 import { usePrismUpdate } from "@/hooks/usePrismUpdate";
+import { useSyncHealth } from "@/hooks/useSyncHealth";
 import type { Grade, Subject } from "@/services/shared/grade";
 import type { Homework } from "@/services/shared/homework";
 import { Course, CourseStatus } from "@/services/shared/timetable";
@@ -22,13 +24,14 @@ import {
   gradeColor,
   GText,
   Icon,
-  type IconName,
   probabilityColor,
   ProbabilityRing,
   SectionHeader,
+  Segmented,
   semantic,
   space,
   Sparkline,
+  type IconName,
   useGlass,
   withAlpha,
 } from "@/ui/glass";
@@ -210,6 +213,7 @@ export default function PrismHome(props: PrismHomeProps) {
   const { analysis } = useBacAnalysis({ lite: true });
   const hasPronote = useHasPronote();
   const update = usePrismUpdate();
+  const syncProblem = useSyncHealth();
   const day = props.upcomingDays[0];
   const recent = props.grades.slice(0, 5);
   // Official average when the school publishes it, otherwise Prism's exact computation.
@@ -332,6 +336,14 @@ export default function PrismHome(props: PrismHomeProps) {
               <ActionButton icon="Gears" label="Réglages" onPress={() => router.navigate("/(features)/prism/reglages")} />
             </View>
           </View>
+
+          <Segmented
+            options={[{ value: "pronote", label: "PRONOTE" }, { value: "revision", label: "Révision" }]}
+            value="pronote"
+            onChange={v => { if (v === "revision") { router.push("/(features)/revision" as never); } }}
+          />
+
+          {syncProblem && <SyncBanner problem={syncProblem} onRetry={props.onRefresh} />}
 
           {update.available && update.release && (
             <Card onPress={update.install}>

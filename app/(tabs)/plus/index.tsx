@@ -66,6 +66,8 @@ export default function PlusHub() {
         <GText variant="overline" tone="secondary">Objectif</GText>
         <Grid columns={columns}>
           {[
+            <Tile key="revision" icon="Sparkles" title="Mode révision" subtitle="Quoi réviser, quand et comment : répétition espacée, méthodes par matière" color={aurora.mint} onPress={() => router.push("/(features)/revision")} />,
+            <Tile key="cibles" icon="Star" title="Notes à viser" subtitle="Bac et Parcoursup : les moyennes réalistes à viser par matière" color={aurora.amber} onPress={() => router.push("/(tabs)/grades/cibles")} />,
             <Tile key="epfl" icon="GraduationHat" title="Objectif EPFL" subtitle="Probabilités d'admission et notes à viser" color={aurora.cyan} onPress={() => router.push("/(tabs)/grades/objectif")} />,
             <Tile key="sim" icon="Pie" title="Moyennes détaillées" subtitle="Comment chaque moyenne est calculée" color={aurora.violet} onPress={() => router.push("/(features)/prism/calculs")} />,
           ]}

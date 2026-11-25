@@ -237,7 +237,7 @@ export function ObjectifView({ demo = false }: { demo?: boolean }) {
             >
               <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.md }}>
                 {[[0, "Maintenir"], [0.02, "+2 pts"], [0.05, "+5 pts"]].map(([v, label]) => (
-                  <Chip key={String(v)} label={String(label)} color={v === targetDelta ? aurora.cyan : g.textTertiary} onPress={() => setTargetDelta(Number(v))} />
+                  <Chip key={String(v)} label={String(label)} color={v === targetDelta ? aurora.cyan : "#8E8E9A"} onPress={() => setTargetDelta(Number(v))} />
                 ))}
               </View>
               {targetSubjects.map(s => (

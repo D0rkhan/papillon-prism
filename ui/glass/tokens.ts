@@ -124,6 +124,11 @@ export function probabilityColor(p: number): string {
 }
 
 export const withAlpha = (hex: string, alpha: number): string => {
+  // rgb()/rgba(): keep the channels, replace the alpha. Never emit an invalid colour
+  // (Android drops it, which can leave text or chips invisible).
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(hex);
+  if (rgb) { return `rgba(${rgb[1]},${rgb[2]},${rgb[3]},${alpha})`; }
+  if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) { return hex; }
   const h = hex.replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;

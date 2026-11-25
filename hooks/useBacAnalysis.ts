@@ -50,6 +50,8 @@ export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {})
   const [error, setError] = useState<Error | null>(null);
   const [targets, setTargets] = useState<Partial<Record<CanonicalSubject, NextGradeTarget | "computing">>>({});
   const inputRef = useRef<EngineInput | null>(null);
+  /** The engine input of the last analysis (for the target planners). */
+  const [input, setInput] = useState<EngineInput | null>(null);
   const runId = useRef(0);
 
   const fetchAll = useCallback(async (manager: AccountManager) => {
@@ -127,6 +129,7 @@ export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {})
     const criteria = { ...epflCriteria(profile), competitiveThreshold: competitive };
     const input: EngineInput = { profile, grades, periods, officialAverages: official, examResults, now, criteria };
     inputRef.current = input;
+    setInput(input);
 
     (async () => {
       setComputing(true);
@@ -176,5 +179,5 @@ export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {})
     setTargets(t => ({ ...t, [subject]: target }));
   }, [targetDelta, currentAdmissible]);
 
-  return { analysis, loading, computing, error, refresh, targets, computeTarget };
+  return { analysis, input, loading, computing, error, refresh, targets, computeTarget };
 }

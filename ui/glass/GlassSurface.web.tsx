@@ -6,7 +6,7 @@ import { radius as R } from "./tokens";
 import { useGlass } from "./useGlass";
 
 /** Web / Linux desktop: real-time CSS backdrop blur with saturation boost. */
-export default function GlassSurface({ radius = R.lg, intensity = "regular", tint, padding, style, children, ...rest }: GlassSurfaceProps) {
+export default function GlassSurface({ radius = R.lg, intensity = "regular", tint, padding, blur: _blur, style, children, ...rest }: GlassSurfaceProps) {
   const g = useGlass();
   const fill = intensity === "strong" ? g.glassFillStrong : g.glassFill;
   const web = {

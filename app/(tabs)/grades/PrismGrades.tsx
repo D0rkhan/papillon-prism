@@ -3,7 +3,9 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Linking, Platform, Pressable, TextInput, useWindowDimensions, View, ViewStyle } from "react-native";
 import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
+import SyncBanner from "@/components/prism/SyncBanner";
 import { useLoadErrorAlert } from "@/hooks/useLoadErrorAlert";
+import { useSyncHealth } from "@/hooks/useSyncHealth";
 import { allowAllAuthRetries } from "@/services/auth/coordinator";
 import type { Grade, Period, Subject } from "@/services/shared/grade";
 import {
@@ -35,6 +37,9 @@ import { useDisplayPeriod } from "./hooks/useDisplayPeriod";
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const web = (style: object) => (Platform.OS === "web" ? (style as unknown as ViewStyle) : null);
+// Android: layout / entering animations on long lists can leave rows at opacity 0
+// (Reanimated + native tabs), which hid the grades. Web and iOS keep them.
+const animateList = Platform.OS !== "android";
 const usable = (s?: { value: number; disabled?: boolean }) => !!s && !s.disabled && Number.isFinite(s.value);
 
 type Sort = "recent" | "average" | "name";
@@ -118,8 +123,8 @@ function SubjectCard({ subject, expanded, onToggle }: { subject: Subject; expand
   const trend = useMemo(() => subjectTrend(subject), [subject]);
 
   return (
-    <Reanimated.View layout={LinearTransition.duration(220)}>
-      <GlassSurface radius={18}>
+    <Reanimated.View layout={animateList ? LinearTransition.duration(220) : undefined}>
+      <GlassSurface radius={18} blur={false}>
         <Pressable onPress={onToggle} accessibilityRole="button" accessibilityState={{ expanded }} style={[{ padding: space.lg }, web({ cursor: "pointer" })]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
             <View style={{ width: 3, alignSelf: "stretch", borderRadius: 2, backgroundColor: color }} />
@@ -147,7 +152,7 @@ function SubjectCard({ subject, expanded, onToggle }: { subject: Subject; expand
           </View>
         </Pressable>
         {expanded && (
-          <Reanimated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: space.lg, paddingBottom: space.md }}>
+          <Reanimated.View entering={animateList ? FadeIn.duration(180) : undefined} style={{ paddingHorizontal: space.lg, paddingBottom: space.md }}>
             {[...grades]
               .sort((a, b) => (b.givenAt?.getTime() ?? 0) - (a.givenAt?.getTime() ?? 0))
               .map(gr => <GradeLine key={gr.id} grade={gr} />)}
@@ -174,6 +179,7 @@ export default function PrismGrades() {
     hasData: subjects.length > 0,
   });
 
+  const syncProblem = useSyncHealth();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("recent");
   const [query, setQuery] = useState("");
@@ -209,6 +215,8 @@ export default function PrismGrades() {
       refreshing={refreshing}
       actions={<ActionButton icon="Pie" label="Détail des calculs" onPress={() => router.push("/(features)/prism/calculs")} />}
     >
+          {syncProblem && <SyncBanner problem={syncProblem} onRetry={onRefresh} />}
+
           {periods.length > 0 && <PeriodPills periods={periods} current={currentPeriod} onSelect={p => { setExpanded(null); setCurrentPeriod(p); }} />}
 
           <View style={{ flexDirection: width >= 720 ? "row" : "column", gap: space.lg }}>
@@ -242,6 +250,19 @@ export default function PrismGrades() {
                 </GlassSurface>
               )}
             </Pressable>
+
+            <Pressable onPress={() => router.push("/(tabs)/grades/cibles")} style={[{ flex: 1 }, web({ cursor: "pointer" })]}>
+              {({ pressed }) => (
+                <GlassSurface padding={space.xl} radius={18} style={{ flex: 1, opacity: pressed ? 0.85 : 1 }}>
+                  <SectionHeader title="Notes à viser" />
+                  <GText variant="title2">Bac et Parcoursup</GText>
+                  <GText variant="callout" tone="tertiary" style={{ marginTop: space.xs }}>
+                    La moyenne réaliste à viser dans chaque matière qui compte.
+                  </GText>
+                  <GText variant="caption" color={accent} style={{ marginTop: space.md }}>Calculer mes cibles →</GText>
+                </GlassSurface>
+              )}
+            </Pressable>
           </View>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap" }}>
@@ -264,7 +285,17 @@ export default function PrismGrades() {
           {loading && subjects.length === 0 ? (
             <SkeletonCards count={columns * 2} lines={1} />
           ) : shown.length === 0 ? (
-            <EmptyState icon="Grades" title={query ? "Aucun résultat" : "Aucune note"} message={query ? "Essaie un autre mot." : "Rien sur cette période pour l'instant."} />
+            <EmptyState
+              icon="Grades"
+              title={query ? "Aucun résultat" : "Aucune note"}
+              message={query ? "Essaie un autre mot."
+                : syncProblem ? "Les notes s'afficheront dès que la connexion à PRONOTE sera rétablie (voir ci-dessus)."
+                  : gradesError || periodsError ? "Les notes n'ont pas pu être chargées. Tire vers le bas ou touche ⟳ pour réessayer."
+                    : periods.length === 0 ? "Aucune période de notes reçue de PRONOTE pour l'instant."
+                      : "Rien sur cette période pour l'instant."}
+              action={!query && (gradesError || periodsError) ? "Réessayer" : undefined}
+              onAction={onRefresh}
+            />
           ) : (
             <View style={{ gap: space.md }}>
               {rows.map((row, i) => (

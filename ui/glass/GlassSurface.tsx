@@ -15,6 +15,12 @@ export interface GlassSurfaceProps extends ViewProps {
   /** Coloured tint mixed into the glass (e.g. a probability colour). */
   tint?: string;
   padding?: number;
+  /**
+   * Live backdrop blur (default). Long lists turn it off: on Android every blur
+   * re-captures the whole screen, so a dozen of them stall scrolling and can
+   * leave cards blank while they catch up.
+   */
+  blur?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -30,18 +36,20 @@ export default function GlassSurface({
   intensity = "regular",
   tint,
   padding,
+  blur = true,
   style,
   children,
   ...rest
 }: GlassSurfaceProps) {
   const g = useGlass();
-  const fill = intensity === "strong" ? g.glassFillStrong : g.glassFill;
+  // Without the blur the fill carries the material: one step denser.
+  const fill = intensity === "strong" || (!blur && Platform.OS === "android") ? g.glassFillStrong : g.glassFill;
   const shape = { borderRadius: radius, overflow: "hidden" as const };
 
   const material =
     Platform.OS === "ios" && runsIOS26 ? (
       <LiquidGlassView style={StyleSheet.absoluteFill} glassType="regular" />
-    ) : Platform.OS === "android" ? (
+    ) : Platform.OS === "android" && blur ? (
       <BlurView
         style={StyleSheet.absoluteFill}
         blurType={g.blurType}

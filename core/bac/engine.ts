@@ -79,7 +79,7 @@ export interface EngineInput {
   settings?: Partial<EngineSettings>;
 }
 
-interface PeriodPart {
+export interface PeriodPart {
   fixed: number | null;
   obsAvg: number | null;
   obsWeight: number;
@@ -132,26 +132,13 @@ const median = (values: number[]): number | null => {
 const countable = (g: BacGrade) =>
   typeof g.value === "number" && g.value >= 0 && g.outOf > 0 && g.coefficient > 0 && !g.bonus;
 
-export function prepare(input: EngineInput): Prepared {
-  const settings: EngineSettings = {
-    ...DEFAULT_ENGINE_SETTINGS,
-    ...input.settings,
-    model: { ...DEFAULT_MODEL_SETTINGS, ...input.settings?.model },
-  };
+/**
+ * Per-period bookkeeping shared by the bac projection and the Parcoursup dossier:
+ * the periods of a school year (synthesised when unknown yet) and, for a subject,
+ * what each period already holds and how much is still to come.
+ */
+export function periodTools(input: EngineInput, settings: EngineSettings) {
   const { profile, now } = input;
-  const criteria = input.criteria ?? epflCriteria(profile);
-  const components = buildBacComponents(profile);
-  const pooled = pooledLevel(input.grades);
-
-  // Fit every subject that drives a component, plus the proxies used by composites.
-  const needed = new Set<CanonicalSubject>(["francais", "histoire_geo", ...profile.keptSpecialties]);
-  for (const c of components) { if (c.subject) { needed.add(c.subject); } }
-  const fits = new Map<CanonicalSubject, SubjectFit>();
-  for (const subject of needed) {
-    const points = toDataPoints(input.grades.filter(g => g.subject === subject), now, settings.model);
-    fits.set(subject, fitSubject(subject, points, pooled, now, settings.model));
-  }
-
   const knownPeriodIds = new Set(input.periods.map(p => p.id));
   const periodsOf = (year: SchoolYear): BacPeriod[] => {
     const real = input.periods.filter(p => p.year === year).sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -187,24 +174,11 @@ export function prepare(input: EngineInput): Prepared {
     return cs.length ? cs.reduce((s, c) => s + c, 0) / cs.length : 1;
   };
 
-  const prepared: PreparedComponent[] = components.map(component => {
-    const known = input.examResults?.[component.id];
-    if (typeof known === "number") {
-      return { component, fixed: known, parts: [], fallbackDate: new Date(component.date), examBias: null, finalized: true };
-    }
 
-    if (component.block === "exam") {
-      const fit = component.subject ? fits.get(component.subject) : undefined;
-      const examBias = fit
-        ? examBiasFromMocks(fit, input.grades.filter(g => g.subject === component.subject), settings.examNoiseSd, settings.examBiasPriorSd)
-        : null;
-      return { component, fixed: null, parts: [], fallbackDate: new Date(component.date), examBias, finalized: false };
-    }
-
-    const subject = component.subject as CanonicalSubject;
+  const partsFor = (subject: CanonicalSubject, periods: readonly BacPeriod[]): PeriodPart[] => {
     const perPeriod = expectedCount(subject);
     const coef = meanCoefficient(subject);
-    const parts: PeriodPart[] = periodsOf(component.year).map(p => {
+    return periods.map(p => {
       const official = input.officialAverages?.find(o => o.periodId === p.id && o.subject === subject);
       if (official) {
         return { fixed: official.value, obsAvg: null, obsWeight: 0, futureCount: 0, futureWeight: 0, futureDate: p.end };
@@ -223,6 +197,49 @@ export function prepare(input: EngineInput): Prepared {
         futureDate: new Date((from + p.end.getTime()) / 2),
       };
     });
+  };
+
+  return { periodsOf, partsFor };
+}
+
+export function prepare(input: EngineInput): Prepared {
+  const settings: EngineSettings = {
+    ...DEFAULT_ENGINE_SETTINGS,
+    ...input.settings,
+    model: { ...DEFAULT_MODEL_SETTINGS, ...input.settings?.model },
+  };
+  const { profile, now } = input;
+  const criteria = input.criteria ?? epflCriteria(profile);
+  const components = buildBacComponents(profile);
+  const pooled = pooledLevel(input.grades);
+
+  // Fit every subject that drives a component, plus the proxies used by composites.
+  const needed = new Set<CanonicalSubject>(["francais", "histoire_geo", ...profile.keptSpecialties]);
+  for (const c of components) { if (c.subject) { needed.add(c.subject); } }
+  const fits = new Map<CanonicalSubject, SubjectFit>();
+  for (const subject of needed) {
+    const points = toDataPoints(input.grades.filter(g => g.subject === subject), now, settings.model);
+    fits.set(subject, fitSubject(subject, points, pooled, now, settings.model));
+  }
+
+  const { periodsOf, partsFor } = periodTools(input, settings);
+
+  const prepared: PreparedComponent[] = components.map(component => {
+    const known = input.examResults?.[component.id];
+    if (typeof known === "number") {
+      return { component, fixed: known, parts: [], fallbackDate: new Date(component.date), examBias: null, finalized: true };
+    }
+
+    if (component.block === "exam") {
+      const fit = component.subject ? fits.get(component.subject) : undefined;
+      const examBias = fit
+        ? examBiasFromMocks(fit, input.grades.filter(g => g.subject === component.subject), settings.examNoiseSd, settings.examBiasPriorSd)
+        : null;
+      return { component, fixed: null, parts: [], fallbackDate: new Date(component.date), examBias, finalized: false };
+    }
+
+    const subject = component.subject as CanonicalSubject;
+    const parts = partsFor(subject, periodsOf(component.year));
     const finalized = parts.every(p => p.fixed !== null || p.futureCount < 0.25) &&
       parts.some(p => p.fixed !== null || p.obsWeight > 0);
     const { end } = schoolYearBounds(profile, component.year);

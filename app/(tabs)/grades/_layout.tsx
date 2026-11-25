@@ -52,6 +52,7 @@ export default function Layout() {
           headerStyle: { backgroundColor: 'transparent' },
         }}
       />
+      <Stack.Screen name="cibles" options={{ headerShown: false }} />
       <Stack.Screen
         name="subject/[id]"
         options={{

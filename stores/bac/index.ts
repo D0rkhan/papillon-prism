@@ -19,6 +19,8 @@ export interface BacState {
   archive: Record<string, YearSnapshot>;
   /** Next-grade targets aim at the current P(admissible) + this delta (0 = hold the line). */
   targetDelta: number;
+  /** "Notes à viser" choices, remembered between visits. */
+  targetPrefs: TargetPrefs;
 
   setProfile: (profile: BacProfile) => void;
   setExamResult: (componentId: string, value: number | null) => void;
@@ -26,6 +28,15 @@ export interface BacState {
   setKindOverride: (gradeId: string, kind: EvalKind | null) => void;
   saveSnapshot: (snapshot: YearSnapshot) => void;
   setTargetDelta: (delta: number) => void;
+  setTargetPrefs: (prefs: Partial<TargetPrefs>) => void;
+}
+
+export interface TargetPrefs {
+  bacGoal: number;
+  psupProfile: string;
+  psupGoal: number;
+  /** Subjects the plan may use (empty: every subject). */
+  subjects: string[];
 }
 
 export const useBacStore = create<BacState>()(
@@ -37,6 +48,7 @@ export const useBacStore = create<BacState>()(
       kindOverrides: {},
       archive: {},
       targetDelta: 0,
+      targetPrefs: { bacGoal: 16, psupProfile: "cpge-sci", psupGoal: 16, subjects: [] },
 
       setProfile: profile => set({ profile }),
       setExamResult: (componentId, value) =>
@@ -60,6 +72,7 @@ export const useBacStore = create<BacState>()(
           return { archive: { ...state.archive, [snapshot.key]: snapshot } };
         }),
       setTargetDelta: targetDelta => set({ targetDelta }),
+      setTargetPrefs: prefs => set(state => ({ targetPrefs: { ...state.targetPrefs, ...prefs } })),
     }),
     {
       name: "bac-storage",
