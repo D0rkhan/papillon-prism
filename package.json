@@ -1,7 +1,7 @@
 {
   "name": "papillon-prism",
   "main": "index.js",
-  "version": "8.6.6",
+  "version": "8.6.7",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
