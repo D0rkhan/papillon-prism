@@ -168,6 +168,9 @@ export default function PrismGrades() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const columns = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
+  // Side by side only when there is room. Stacked, `flex` would collapse a card to
+  // 0 height on Android (the scroll view hands its viewport height down to Yoga).
+  const wide = width >= 720;
 
   const { periods, currentPeriod, setCurrentPeriod, refresh: refreshPeriods, loading: loadingPeriods, error: periodsError, failures: periodsFailures, grades: gradesData, isFallback } = useDisplayPeriod();
   const { subjects, averages, history, rank, refresh: refreshGrades, loading: loadingGrades, refreshing, error: gradesError, failures: gradesFailures } = gradesData;
@@ -219,8 +222,8 @@ export default function PrismGrades() {
 
           {periods.length > 0 && <PeriodPills periods={periods} current={currentPeriod} onSelect={p => { setExpanded(null); setCurrentPeriod(p); }} />}
 
-          <View style={{ flexDirection: width >= 720 ? "row" : "column", gap: space.lg }}>
-            <GlassSurface padding={space.xl} radius={18} style={{ flex: 1.4 }}>
+          <View style={{ flexDirection: wide ? "row" : "column", gap: space.lg }}>
+            <GlassSurface padding={space.xl} radius={18} style={wide ? { flex: 1.4 } : undefined}>
               <SectionHeader title={currentPeriod ? `${periodLabel(currentPeriod)}${isFallback ? " · le nouveau trimestre est encore vide" : ""}` : "Période"} />
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xxl, alignItems: "flex-end" }}>
                 <Stat
@@ -238,9 +241,9 @@ export default function PrismGrades() {
               </View>
             </GlassSurface>
 
-            <Pressable onPress={() => router.push("/(tabs)/grades/objectif")} style={[{ flex: 1 }, web({ cursor: "pointer" })]}>
+            <Pressable onPress={() => router.push("/(tabs)/grades/objectif")} style={[wide ? { flex: 1 } : null, web({ cursor: "pointer" })]}>
               {({ pressed }) => (
-                <GlassSurface padding={space.xl} radius={18} style={{ flex: 1, opacity: pressed ? 0.85 : 1 }}>
+                <GlassSurface padding={space.xl} radius={18} style={{ flex: wide ? 1 : undefined, opacity: pressed ? 0.85 : 1 }}>
                   <SectionHeader title="Objectif EPFL" />
                   <GText variant="title2">Probabilités et notes à viser</GText>
                   <GText variant="callout" tone="tertiary" style={{ marginTop: space.xs }}>
@@ -251,9 +254,9 @@ export default function PrismGrades() {
               )}
             </Pressable>
 
-            <Pressable onPress={() => router.push("/(tabs)/grades/cibles")} style={[{ flex: 1 }, web({ cursor: "pointer" })]}>
+            <Pressable onPress={() => router.push("/(tabs)/grades/cibles")} style={[wide ? { flex: 1 } : null, web({ cursor: "pointer" })]}>
               {({ pressed }) => (
-                <GlassSurface padding={space.xl} radius={18} style={{ flex: 1, opacity: pressed ? 0.85 : 1 }}>
+                <GlassSurface padding={space.xl} radius={18} style={{ flex: wide ? 1 : undefined, opacity: pressed ? 0.85 : 1 }}>
                   <SectionHeader title="Notes à viser" />
                   <GText variant="title2">Bac et Parcoursup</GText>
                   <GText variant="callout" tone="tertiary" style={{ marginTop: space.xs }}>

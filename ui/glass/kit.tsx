@@ -258,9 +258,11 @@ export function Segmented<T extends string>({
     );
   });
   return (
-    <GlassSurface radius={radius.pill} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
+    <GlassSurface radius={radius.pill} blur={false} style={{ alignSelf: "flex-start", maxWidth: "100%" }}>
       {scroll ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 2, padding: 3 }}>{items}</ScrollView>
+        // flexGrow 0: RN gives horizontal scroll views flexGrow 1, which on Android let
+        // the pill bar grow to the screen height and push the whole page out of sight.
+        <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 2, padding: 3 }}>{items}</ScrollView>
       ) : (
         <View style={{ flexDirection: "row", gap: 2, padding: 3, flexWrap: "wrap" }}>{items}</View>
       )}
