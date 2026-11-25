@@ -32,10 +32,12 @@ const nextFrame = () => new Promise<void>(resolve => setTimeout(resolve, 16));
  * bac / EPFL engine and the decision tools. Heavy work is split in steps with a frame
  * in between, so the screen stays responsive on a phone.
  */
-export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {}) {
+export function useBacAnalysis(options: { demo?: boolean; lite?: boolean; inputOnly?: boolean } = {}) {
   const demo = options.demo ?? false;
   // Lite: projection only (home widget) — no levers, scenarios or backtest.
   const lite = options.lite ?? false;
+  // Input only: the grades and periods, no simulation at all (revision weights, targets).
+  const inputOnly = options.inputOnly ?? false;
   const profile = useBacStore(s => s.profile);
   const examResults = useBacStore(s => s.examResults);
   const competitive = useBacStore(s => s.competitive);
@@ -130,6 +132,7 @@ export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {})
     const input: EngineInput = { profile, grades, periods, officialAverages: official, examResults, now, criteria };
     inputRef.current = input;
     setInput(input);
+    if (inputOnly) { return; }
 
     (async () => {
       setComputing(true);
@@ -163,7 +166,7 @@ export function useBacAnalysis(options: { demo?: boolean; lite?: boolean } = {})
         if (id === runId.current) { setComputing(false); }
       }
     })();
-  }, [current, archive, profile, examResults, competitive, demo, lite]);
+  }, [current, archive, profile, examResults, competitive, demo, lite, inputOnly]);
 
   const targetDelta = useBacStore(s => s.targetDelta);
   const currentAdmissible = analysis?.result.probabilities.admissible ?? 0;

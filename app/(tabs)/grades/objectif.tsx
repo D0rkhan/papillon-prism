@@ -124,7 +124,7 @@ export function ObjectifView({ demo = false }: { demo?: boolean }) {
     <View style={{ flex: 1, backgroundColor: g.background }}>
       <Aurora />
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + (Platform.OS === "web" ? 124 : space.xxl), paddingBottom: insets.bottom + 120, paddingHorizontal: space.lg, alignSelf: "center", width: Math.min(width, 760) }}
+        contentContainerStyle={{ paddingTop: insets.top + (Platform.OS === "web" ? 124 : 72), paddingBottom: insets.bottom + 120, paddingHorizontal: space.lg, alignSelf: "center", width: Math.min(width, 760) }}
         refreshControl={<RefreshControl refreshing={loading && !!analysis} onRefresh={refresh} tintColor={aurora.cyan} />}
       >
         <GText variant="overline" tone="secondary">Bac {profile.session} · Objectif{demo ? " · démo" : ""}</GText>

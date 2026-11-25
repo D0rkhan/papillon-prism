@@ -50,7 +50,7 @@ export function useRevisionData() {
   const to = useMemo(() => { const d = new Date(); d.setHours(23, 59, 59, 0); return d; }, []);
   const lessons = usePronoteExtra<LessonContent[]>(`revision-lessons:${from.toDateString()}`, session => getLessonContents(session, from, to));
 
-  const { input } = useBacAnalysis({ lite: true });
+  const { input } = useBacAnalysis({ inputOnly: true });
   const bacGoal = useBacStore(s => s.targetPrefs.bacGoal);
 
   const homework = useMemo(() => Object.values(homeworkByWeek).flat() as Homework[], [homeworkByWeek]);
